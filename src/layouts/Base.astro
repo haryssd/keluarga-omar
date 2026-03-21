@@ -30,6 +30,103 @@ const { title = "Keluarga Omar", description = "Pokok Keluarga Omar — 4 Genera
   </style>
 </head>
 <body>
+
+  <!-- ── SPLASH SCREEN ── -->
+  <div id="splash">
+    <div class="splash-inner">
+      <div class="splash-diamonds" aria-hidden="true">
+        <svg width="120" height="16" viewBox="0 0 120 16">
+          <rect x="2"   y="5"  width="6"  height="6"  transform="rotate(45 5 8)"    fill="#e8c46a" opacity="0.3"/>
+          <rect x="15"  y="4"  width="8"  height="8"  transform="rotate(45 19 8)"   fill="#e8c46a" opacity="0.55"/>
+          <rect x="31"  y="2"  width="12" height="12" transform="rotate(45 37 8)"   fill="#e8c46a" opacity="0.8"/>
+          <rect x="51"  y="1"  width="14" height="14" transform="rotate(45 58 8)"   fill="#e8c46a"/>
+          <rect x="73"  y="2"  width="12" height="12" transform="rotate(45 79 8)"   fill="#e8c46a" opacity="0.8"/>
+          <rect x="91"  y="4"  width="8"  height="8"  transform="rotate(45 95 8)"   fill="#e8c46a" opacity="0.55"/>
+          <rect x="107" y="5"  width="6"  height="6"  transform="rotate(45 110 8)"  fill="#e8c46a" opacity="0.3"/>
+        </svg>
+      </div>
+      <div class="splash-subtitle">بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم</div>
+      <div class="splash-title">Keluarga Omar</div>
+      <div class="splash-tagline">Pokok Keluarga · 4 Generasi</div>
+      <div class="splash-diamonds" aria-hidden="true">
+        <svg width="120" height="16" viewBox="0 0 120 16">
+          <rect x="2"   y="5"  width="6"  height="6"  transform="rotate(45 5 8)"    fill="#e8c46a" opacity="0.3"/>
+          <rect x="15"  y="4"  width="8"  height="8"  transform="rotate(45 19 8)"   fill="#e8c46a" opacity="0.55"/>
+          <rect x="31"  y="2"  width="12" height="12" transform="rotate(45 37 8)"   fill="#e8c46a" opacity="0.8"/>
+          <rect x="51"  y="1"  width="14" height="14" transform="rotate(45 58 8)"   fill="#e8c46a"/>
+          <rect x="73"  y="2"  width="12" height="12" transform="rotate(45 79 8)"   fill="#e8c46a" opacity="0.8"/>
+          <rect x="91"  y="4"  width="8"  height="8"  transform="rotate(45 95 8)"   fill="#e8c46a" opacity="0.55"/>
+          <rect x="107" y="5"  width="6"  height="6"  transform="rotate(45 110 8)"  fill="#e8c46a" opacity="0.3"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+
   <slot />
+
+  <style>
+    /* ── Splash screen ── */
+    #splash {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: linear-gradient(160deg, #1e5235 0%, #173d28 60%, #0f2a1a 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      animation: splash-fade-out 0.6s ease forwards;
+      animation-delay: 2.4s;
+      pointer-events: none;
+    }
+    @keyframes splash-fade-out {
+      from { opacity: 1; }
+      to   { opacity: 0; visibility: hidden; }
+    }
+    .splash-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      animation: splash-content-in 0.7s cubic-bezier(0.16,1,0.3,1) both;
+    }
+    @keyframes splash-content-in {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .splash-subtitle {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(13px, 3vw, 16px);
+      color: rgba(232, 196, 106, 0.7);
+      letter-spacing: 0.06em;
+      font-style: italic;
+    }
+    .splash-title {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(32px, 8vw, 56px);
+      font-weight: 700;
+      color: #e8c46a;
+      letter-spacing: 0.04em;
+      text-shadow: 0 2px 24px rgba(232,196,106,0.3);
+      line-height: 1.1;
+    }
+    .splash-tagline {
+      font-family: 'Lato', sans-serif;
+      font-size: clamp(11px, 2.5vw, 14px);
+      font-weight: 300;
+      color: rgba(245, 228, 176, 0.75);
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+    }
+  </style>
+
+  <script>
+    // Remove from DOM after animation completes so it doesn't block interaction
+    const splash = document.getElementById('splash');
+    if (splash) {
+      splash.addEventListener('animationend', () => splash.remove());
+    }
+  </script>
+
 </body>
 </html>
