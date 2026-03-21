@@ -1,0 +1,14 @@
+---
+import Base from '../layouts/Base.astro';
+import FamilyTree from '../components/FamilyTree.astro';
+import Modal from '../components/Modal.astro';
+import familyData from '../data/family.json';
+import type { FamilyData } from '../types/family';
+
+const data = familyData as FamilyData;
+---
+
+<Base title={`${data.familyName} — Pokok Keluarga`}>
+  <FamilyTree data={data} />
+  <Modal />
+</Base>

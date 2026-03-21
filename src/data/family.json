@@ -1,0 +1,82 @@
+{
+  "familyName": "Keluarga Omar",
+  "subtitle": "Pokok Keluarga · 4 Generasi",
+  "tree": {
+    "couple": ["p1", "p2"],
+    "children": [
+      { "couple": ["p10", "p11"], "children": [] },
+      { "couple": ["p12", "p13"], "children": [] },
+      { "couple": ["p14", "p15"], "children": [] },
+      { "couple": ["p16", "p17"], "children": [] },
+      {
+        "couple": ["p18", "p19"],
+        "note": "Perkahwinan 1",
+        "children": []
+      },
+      {
+        "couple": ["p18", "p20"],
+        "note": "Perkahwinan 2",
+        "children": []
+      },
+      { "couple": ["p21", "p22"], "children": [] },
+      { "couple": ["p23", "p24"], "children": [] },
+      { "couple": ["p25", "p26"], "children": [] },
+      {
+        "couple": ["p27", "p28"],
+        "children": [
+          {
+            "couple": ["p30", "p31"],
+            "children": [
+              { "couple": ["p60"], "children": [] },
+              { "couple": ["p61"], "children": [] }
+            ]
+          },
+          { "couple": ["p32"], "children": [] },
+          { "couple": ["p33"], "children": [] },
+          { "couple": ["p34"], "children": [] }
+        ]
+      }
+    ]
+  },
+  "people": {
+    "p1":  { "name": "Omar Md Deris",    "nickname": "Datuk",      "initials": "OD", "role": "Datuk",          "generation": 1, "deceased": true,  "spouse": "p2",  "photo": "" },
+    "p2":  { "name": "Jenab Ibrahim",   "nickname": "Nenek",      "initials": "JI", "role": "Nenek",          "generation": 1, "deceased": true,  "spouse": "p1",  "photo": "" },
+
+    "p10": { "name": "Fatimah",               "nickname": "Mok Teh",    "initials": "FM", "role": "Anak sulung",    "generation": 2, "deceased": false, "spouse": "p11", "photo": "" },
+    "p11": { "name": "Mamat",                 "nickname": null,         "initials": "MT", "role": "Menantu",        "generation": 2, "deceased": true,  "spouse": "p10", "photo": "" },
+
+    "p12": { "name": "Bidah",                 "nickname": "Kak We",     "initials": "BD", "role": "Anak ke-2",      "generation": 2, "deceased": false, "spouse": "p13", "photo": "" },
+    "p13": { "name": "Yaakob",                "nickname": null,         "initials": "YK", "role": "Menantu",        "generation": 2, "deceased": true,  "spouse": "p12", "photo": "" },
+
+    "p14": { "name": "Abdul Rahman",          "nickname": "Pak Muda",   "initials": "AR", "role": "Anak ke-3",      "generation": 2, "deceased": false, "spouse": "p15", "photo": "" },
+    "p15": { "name": "Rogayah Mahmud",  "nickname": null,         "initials": "RM", "role": "Menantu",        "generation": 2, "deceased": false, "spouse": "p14", "photo": "" },
+
+    "p16": { "name": "Zawiah",                "nickname": "Kak Cik",    "initials": "ZW", "role": "Anak ke-4",      "generation": 2, "deceased": false, "spouse": "p17", "photo": "" },
+    "p17": { "name": "Said",                  "nickname": null,         "initials": "SD", "role": "Menantu",        "generation": 2, "deceased": false, "spouse": "p16", "photo": "" },
+
+    "p18": { "name": "Meriam",                "nickname": "Kak Nik",    "initials": "MR", "role": "Anak ke-5",      "generation": 2, "deceased": false, "spouse": "p20", "photo": "" },
+    "p19": { "name": "Seman",                 "nickname": null,         "initials": "SM", "role": "Suami 1 Meriam", "generation": 2, "deceased": true,  "spouse": "p18", "photo": "" },
+    "p20": { "name": "Mat Adam",              "nickname": null,         "initials": "MA", "role": "Menantu",        "generation": 2, "deceased": true,  "spouse": "p18", "photo": "" },
+
+    "p21": { "name": "Che Aekah",             "nickname": "Kak Nah",    "initials": "CA", "role": "Anak ke-6",      "generation": 2, "deceased": false, "spouse": "p22", "photo": "" },
+    "p22": { "name": "Wan Ahmad Syukri",      "nickname": null,         "initials": "WA", "role": "Menantu",        "generation": 2, "deceased": true,  "spouse": "p21", "photo": "" },
+
+    "p23": { "name": "Ali",                   "nickname": "Pok Nik",    "initials": "AL", "role": "Anak ke-7",      "generation": 2, "deceased": false, "spouse": "p24", "photo": "" },
+    "p24": { "name": "Rosni Zakaria",   "nickname": "Moknik",     "initials": "RZ", "role": "Menantu",        "generation": 2, "deceased": false, "spouse": "p23", "photo": "" },
+
+    "p25": { "name": "Mohd Sohaimi",          "nickname": "Ayah Mi",    "initials": "MS", "role": "Anak ke-8",      "generation": 2, "deceased": true,  "spouse": "p26", "photo": "" },
+    "p26": { "name": "Rohani Wahab",    "nickname": null,         "initials": "RH", "role": "Menantu",        "generation": 2, "deceased": false, "spouse": "p25", "photo": "" },
+
+    "p27": { "name": "Noh",                   "nickname": "Poksu Noh",  "initials": "NH", "role": "Anak bongsu",    "generation": 2, "deceased": false, "spouse": "p28", "photo": "" },
+    "p28": { "name": "Anisah Yusuf",    "nickname": "Cik Su",     "initials": "AY", "role": "Menantu",        "generation": 2, "deceased": false, "spouse": "p27", "photo": "" },
+
+    "p30": { "name": "Hanis Najwa",           "nickname": null,         "initials": "HN", "role": "Anak sulung",    "generation": 3, "deceased": false, "spouse": "p31", "photo": "" },
+    "p31": { "name": "Ahmad Zaidi",           "nickname": null,         "initials": "AZ", "role": "Menantu",        "generation": 3, "deceased": false, "spouse": "p30", "photo": "" },
+    "p32": { "name": "Haris Hafizin",         "nickname": null,         "initials": "HH", "role": "Anak ke-2",      "generation": 3, "deceased": false, "spouse": null,  "photo": "" },
+    "p33": { "name": "Haris Daniel",          "nickname": "Yong",       "initials": "HD", "role": "Anak ke-3",      "generation": 3, "deceased": false, "spouse": null,  "photo": "" },
+    "p34": { "name": "Mizan Qistina",         "nickname": null,         "initials": "MQ", "role": "Anak bongsu",    "generation": 3, "deceased": false, "spouse": null,  "photo": "" },
+
+    "p60": { "name": "Adam Addeen",           "nickname": null,         "initials": "AA", "role": "Cicit",          "generation": 4, "deceased": false, "spouse": null,  "photo": "" },
+    "p61": { "name": "Omar Assad",            "nickname": null,         "initials": "OA", "role": "Cicit",          "generation": 4, "deceased": false, "spouse": null,  "photo": "" }
+  }
+}

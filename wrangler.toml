@@ -1,0 +1,12 @@
+name = "keluarga-omar"
+compatibility_date = "2024-01-01"
+
+# Cloudflare Pages — static output
+pages_build_output_dir = "dist"
+
+# R2 bucket binding for family photos
+# After creating your R2 bucket in Cloudflare dashboard,
+# update the bucket_name below to match yours.
+[[r2_buckets]]
+binding    = "FAMILY_PHOTOS"
+bucket_name = "keluarga-omar-photos"

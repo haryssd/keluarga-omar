@@ -1,0 +1,1331 @@
+---
+import type { FamilyData, TreeNode } from '../types/family';
+
+export interface Props {
+  data: FamilyData;
+}
+
+const { data } = Astro.props;
+const { people, tree, familyName, subtitle } = data;
+
+const GEN_LABELS: Record<number, string> = {
+  1: 'Generasi 1 — Datuk & Nenek',
+  2: 'Generasi 2 — Anak-anak',
+  3: 'Generasi 3 — Cucu-cucu',
+  4: 'Generasi 4 — Cicit-cicit',
+};
+
+function renderPerson(id: string, isPatriarch: boolean): string {
+  const p = people[id];
+  if (!p) return '';
+  const firstName = p.name.split(' ')[0];
+  const wrapCls = p.deceased ? 'ft-avatar-wrap deceased' : 'ft-avatar-wrap';
+  const avCls   = [
+    'ft-avatar',
+    isPatriarch ? 'patriarch' : '',
+    p.deceased  ? 'deceased'  : '',
+  ].filter(Boolean).join(' ');
+  const nameCls = isPatriarch ? 'ft-name patriarch-name' : 'ft-name';
+  const photoEl = p.photo
+    ? `<img src="${p.photo}" alt="${p.name}" loading="lazy" />`
+    : `<span class="ft-initials">${p.initials}</span>`;
+  return `
+    <div class="ft-person" data-id="${id}" role="button" tabindex="0" aria-label="${p.name}">
+      <div class="${wrapCls}">
+        <div class="ft-avatar-frame" aria-hidden="true"></div>
+        <div class="${avCls}">${photoEl}</div>
+      </div>
+      <div class="${nameCls}">${p.name}</div>
+    </div>`;
+}
+
+function renderCouple(ids: string[], isPatriarch: boolean): string {
+  if (ids.length === 1) return renderPerson(ids[0], false);
+  return `
+    <div class="ft-couple">
+      ${renderPerson(ids[0], isPatriarch)}
+      <div class="ft-conn" aria-hidden="true">
+        <div class="ft-conn-line"></div>
+        <div class="ft-diamond"></div>
+        <div class="ft-conn-line"></div>
+      </div>
+      ${renderPerson(ids[1], isPatriarch)}
+    </div>`;
+}
+
+function renderFamily(node: TreeNode, isRoot: boolean): string {
+  const childCount = node.children.length;
+  // If ANY child has a marriage note, give ALL siblings a fixed-height
+  // note slot so their couple cards start at the exact same vertical position.
+  const anyChildHasNote = node.children.some(c => c.note);
+
+  const childrenHtml = node.children
+    .map(child => {
+      const noteSlot = anyChildHasNote
+        ? `<div class="ft-note-slot">${child.note
+            ? `<span class="ft-marriage-note-inner">${child.note}</span>`
+            : ''}</div>`
+        : '';
+      return `
+        <div class="ft-child-col">
+          ${noteSlot}
+          ${renderFamily(child, false)}
+        </div>`;
+    })
+    .join('');
+
+  return `
+    <div class="ft-gen-group">
+      ${renderCouple(node.couple, isRoot)}
+      ${childCount > 0 ? `
+        <div class="ft-connector" aria-hidden="true">
+          <div class="v-line v-short"></div>
+        </div>
+        <div class="ft-children${anyChildHasNote ? ' ft-children--with-notes' : ''}">${childrenHtml}</div>
+      ` : ''}
+    </div>`;
+}
+
+const treeHtml = renderFamily(tree as TreeNode, true);
+const peopleJson = JSON.stringify(people);
+const genLabelsJson = JSON.stringify(GEN_LABELS);
+const treeJson = JSON.stringify(tree);
+---
+
+<div id="ft">
+  <!-- Songket background tile -->
+  <div class="songket-bg" aria-hidden="true">
+    <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="songket-pat" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+          <rect width="40" height="40" fill="none"/>
+          <rect x="19" y="0"  width="2" height="2" fill="#1a5c3a"/>
+          <rect x="19" y="19" width="2" height="2" fill="#1a5c3a"/>
+          <rect x="0"  y="19" width="2" height="2" fill="#1a5c3a"/>
+          <rect x="38" y="19" width="2" height="2" fill="#1a5c3a"/>
+          <path d="M20 2 L22 10 L20 18 L18 10 Z" fill="#c9922a"/>
+          <path d="M20 22 L22 30 L20 38 L18 30 Z" fill="#c9922a"/>
+          <path d="M2 20 L10 22 L18 20 L10 18 Z"  fill="#c9922a"/>
+          <path d="M22 20 L30 22 L38 20 L30 18 Z" fill="#c9922a"/>
+          <rect x="18" y="8"  width="4" height="4" transform="rotate(45 20 10)" fill="#c9922a"/>
+          <rect x="18" y="28" width="4" height="4" transform="rotate(45 20 30)" fill="#c9922a"/>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#songket-pat)"/>
+    </svg>
+  </div>
+
+  <!-- Header -->
+  <header class="ft-head">
+    <div class="head-top-stripe" aria-hidden="true"></div>
+    <div class="ft-head-inner">
+      <div class="head-title-row" aria-hidden="true">
+        <svg width="32" height="32" viewBox="0 0 20 20"><rect x="8.5" y="0" width="3" height="20" fill="#c9922a" opacity="0.55"/><rect x="0" y="8.5" width="20" height="3" fill="#c9922a" opacity="0.55"/><rect x="7" y="7" width="6" height="6" transform="rotate(45 10 10)" fill="#e8c46a"/></svg>
+        <h1 class="ft-head-title">{familyName}</h1>
+        <svg width="32" height="32" viewBox="0 0 20 20"><rect x="8.5" y="0" width="3" height="20" fill="#c9922a" opacity="0.55"/><rect x="0" y="8.5" width="20" height="3" fill="#c9922a" opacity="0.55"/><rect x="7" y="7" width="6" height="6" transform="rotate(45 10 10)" fill="#e8c46a"/></svg>
+      </div>
+      <p class="ft-head-sub">{subtitle}</p>
+      <div class="head-diamonds" aria-hidden="true">
+        <div class="head-diamond-line"></div>
+        <svg width="140" height="20" viewBox="0 0 100 16">
+          <rect x="2"  y="6" width="5"  height="5"  transform="rotate(45 4.5 8.5)"  fill="#e8c46a" opacity="0.4"/>
+          <rect x="14" y="5" width="7"  height="7"  transform="rotate(45 17.5 8.5)" fill="#e8c46a" opacity="0.65"/>
+          <rect x="29" y="3" width="11" height="11" transform="rotate(45 34.5 8.5)" fill="#e8c46a"/>
+          <rect x="44" y="3" width="11" height="11" transform="rotate(45 49.5 8.5)" fill="#e8c46a"/>
+          <rect x="59" y="3" width="11" height="11" transform="rotate(45 64.5 8.5)" fill="#e8c46a"/>
+          <rect x="75" y="5" width="7"  height="7"  transform="rotate(45 78.5 8.5)" fill="#e8c46a" opacity="0.65"/>
+          <rect x="88" y="6" width="5"  height="5"  transform="rotate(45 90.5 8.5)" fill="#e8c46a" opacity="0.4"/>
+        </svg>
+        <div class="head-diamond-line"></div>
+      </div>
+    </div>
+    <div class="head-bottom-stripe" aria-hidden="true"></div>
+  </header>
+
+  <!-- Tree scroll area -->
+  <div class="ft-tree-wrap" id="treeWrap">
+    <div class="ft-tree" id="ftTree" set:html={treeHtml}></div>
+  </div>
+
+  <!-- Legend -->
+  <footer class="ft-legend">
+    <div class="legend-item">
+      <div class="legend-circle patriarch-circle"></div>
+      <span>Patriarch / Matriarch</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-circle"></div>
+      <span>Ahli keluarga</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-circle deceased-circle"></div>
+      <span>Al-Fatihah (wafat)</span>
+    </div>
+    <div class="legend-item hint">
+      <span>Klik untuk butiran &nbsp;·&nbsp; Scroll untuk lebih</span>
+    </div>
+  </footer>
+
+  <!-- Mobile: Vertical Scroll / Family Album -->
+  <div class="ft-mobile" id="ftMobile" aria-label="Paparan mudah alih">
+    <div class="ft-mobile-content" id="ftMobContent"></div>
+  </div>
+</div>
+
+<script define:vars={{ peopleJson, genLabelsJson, treeJson }}>
+  const PEOPLE = JSON.parse(peopleJson);
+  const GEN_LABELS = JSON.parse(genLabelsJson);
+  const TREE = JSON.parse(treeJson);
+
+  // ── Build parentMap: personId → [parentId, ...] (their parent couple) ──
+  function buildParentMap(node, parentCouple) {
+    const map = {};
+    node.couple.forEach(function (id) {
+      if (parentCouple) map[id] = parentCouple;
+    });
+    node.children.forEach(function (child) {
+      Object.assign(map, buildParentMap(child, node.couple));
+    });
+    return map;
+  }
+  const parentMap = buildParentMap(TREE, null);
+
+  // Returns array of parent couples from oldest ancestor to immediate parent
+  function getAncestry(id) {
+    const chain = [];
+    let current = id;
+    const visited = new Set();
+    while (current) {
+      if (visited.has(current)) break;
+      visited.add(current);
+      const parents = parentMap[current];
+      if (!parents) break;
+      chain.unshift(parents);
+      current = parents[0];
+    }
+    return chain;
+  }
+
+  function openModal(id) {
+    const p = PEOPLE[id];
+    if (!p) return;
+
+    const spouseId = p.spouse;
+    const spouse = spouseId ? PEOPLE[spouseId] : null;
+
+    const mAv = document.getElementById('mAvatar');
+    const mInit = document.getElementById('mInitials');
+    mInit.textContent = p.initials;
+    mAv.className = 'modal-avatar';
+    if (p.generation === 1) mAv.classList.add('patriarch');
+    if (p.deceased) mAv.classList.add('deceased');
+
+    if (p.photo) {
+      mInit.style.display = 'none';
+      let img = mAv.querySelector('img');
+      if (!img) { img = document.createElement('img'); mAv.appendChild(img); }
+      img.src = p.photo;
+      img.alt = p.name;
+    } else {
+      mInit.style.display = '';
+      const img = mAv.querySelector('img');
+      if (img) img.remove();
+    }
+
+    document.getElementById('mName').textContent = p.name;
+    const mNick = document.getElementById('mNickname');
+    if (p.nickname) {
+      mNick.textContent = p.nickname;
+      mNick.style.display = 'inline-flex';
+    } else {
+      mNick.style.display = 'none';
+    }
+    document.getElementById('mRole').textContent = p.role;
+    document.getElementById('mAlfatihah').style.display = p.deceased ? 'block' : 'none';
+
+    // Generation ordinal in Malay
+    const genOrdinal = ['', 'Pertama', 'Ke-2', 'Ke-3', 'Ke-4'][p.generation] ?? ('Ke-' + p.generation);
+
+    // ── Lineage ancestry timeline ─────────────────────────────────────────
+    const ancestry = getAncestry(id);
+    let lineageHtml = '';
+    if (ancestry.length > 0) {
+      const ancestorRows = ancestry.map(function (couple) {
+        const names = couple.map(function (pid) {
+          return PEOPLE[pid] ? PEOPLE[pid].name : pid;
+        }).join(' & ');
+        const gen = PEOPLE[couple[0]] ? PEOPLE[couple[0]].generation : '';
+        const genLabel = { 1: 'Generasi Pertama', 2: 'Generasi Ke-2', 3: 'Generasi Ke-3', 4: 'Generasi Ke-4' }[gen] || '';
+        return `
+          <div class="ml-row">
+            <div class="ml-spine">
+              <div class="ml-dot"></div>
+              <div class="ml-line"></div>
+            </div>
+            <div class="ml-info">
+              <button class="ml-name" data-open-id="${couple[0]}">${names}</button>
+              ${genLabel ? `<span class="ml-gen">${genLabel}</span>` : ''}
+            </div>
+          </div>`;
+      }).join('');
+
+      lineageHtml = `
+        <div class="modal-lineage">
+          <div class="ml-title">
+            <svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><rect x="1" y="1" width="6" height="6" transform="rotate(45 4 4)" fill="#c9922a"/></svg>
+            Susur Galur
+          </div>
+          ${ancestorRows}
+          <div class="ml-row ml-row-current">
+            <div class="ml-spine">
+              <div class="ml-dot ml-dot-current"></div>
+            </div>
+            <div class="ml-info">
+              <span class="ml-name-current">${p.name}</span>
+              <span class="ml-gen ml-gen-current">Generasi ${genOrdinal}</span>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    let body = lineageHtml;
+
+    // ── Section 2: Pasangan (only if married) ────────────────────────────
+    if (spouse) {
+      body += `
+      <div class="modal-section">
+        <div class="modal-section-title">Pasangan</div>
+        <div class="modal-spouse-card">
+          <div class="modal-spouse-avatar">${spouse.initials}</div>
+          <span class="modal-spouse-name">${spouse.name}</span>
+        </div>
+      </div>`;
+    }
+
+    // ── Alert: no photo ───────────────────────────────────────────────────
+    if (!p.photo) {
+      body += `
+      <div class="modal-photo-alert">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="13" r="3"/>
+          <path d="M20 8h-3.4L15 6H9L7.4 8H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2z"/>
+        </svg>
+        <span>Belum ada gambar</span>
+      </div>`;
+    }
+
+    document.getElementById('mBody').innerHTML = body;
+
+    // Wire up lineage ancestor taps → open that person's modal
+    document.querySelectorAll('.ml-name').forEach(function (el) {
+      el.addEventListener('click', function () { openModal(el.dataset.openId); });
+    });
+
+    const overlay = document.getElementById('ft-overlay');
+    overlay.classList.add('show');
+    overlay.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal() {
+    const overlay = document.getElementById('ft-overlay');
+    overlay.classList.remove('show');
+    overlay.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+
+  // Expose globally so any inline handler can call it
+  window.closeModal = closeModal;
+
+  // All DOM queries are deferred until the full document is parsed,
+  // because this define:vars script is an inline IIFE that runs before
+  // Modal.astro's HTML (#modalClose, #ft-overlay) exists in the DOM.
+  document.addEventListener('DOMContentLoaded', function () {
+    // Close button inside Modal.astro
+    document.getElementById('modalClose').addEventListener('click', closeModal);
+
+    // Click outside modal card to close
+    document.getElementById('ft-overlay').addEventListener('click', function (e) {
+      if (e.target === e.currentTarget) closeModal();
+    });
+
+    // Escape key to close
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeModal();
+    });
+
+    // Attach open handlers to every person node in the tree
+    document.querySelectorAll('.ft-person').forEach(function (el) {
+      const id = el.dataset.id;
+      el.addEventListener('click', function () { openModal(id); });
+      el.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(id); }
+      });
+    });
+
+    // ── Mobile: Vertical Scroll / Family Album ──────────────────────────
+    const byGen = {};
+    Object.keys(PEOPLE).forEach(function (id) {
+      const gen = PEOPLE[id].generation;
+      if (!byGen[gen]) byGen[gen] = [];
+      byGen[gen].push(id);
+    });
+
+    const MOB_GEN_TITLES = {
+      1: 'Generasi Pertama',
+      2: 'Generasi Kedua',
+      3: 'Generasi Ketiga',
+      4: 'Generasi Keempat',
+    };
+    const MOB_GEN_SUBS = {
+      1: 'Datuk & Nenek',
+      2: 'Anak-anak',
+      3: 'Cucu-cucu',
+      4: 'Cicit-cicit',
+    };
+
+    function renderMobCard(id) {
+      const p = PEOPLE[id];
+      const avCls = ['mob-avatar', p.generation === 1 ? 'patriarch' : '', p.deceased ? 'deceased' : ''].filter(Boolean).join(' ');
+      const photoEl = p.photo
+        ? `<img src="${p.photo}" alt="${p.name}" loading="lazy" />`
+        : `<span class="mob-initials">${p.initials}</span>`;
+      return `
+        <div class="mob-card" data-id="${id}" role="button" tabindex="0" aria-label="${p.name}">
+          <div class="mob-avatar-wrap${p.deceased ? ' deceased' : ''}">
+            <div class="mob-avatar-frame" aria-hidden="true"></div>
+            <div class="${avCls}">${photoEl}</div>
+          </div>
+          <div class="mob-name">${p.name}</div>
+          ${p.nickname ? `<div class="mob-nickname">${p.nickname}</div>` : ''}
+          ${p.role !== p.nickname ? `<div class="mob-role">${p.role}</div>` : ''}
+          ${p.deceased ? '<div class="mob-deceased">Al-Fatihah</div>' : ''}
+        </div>`;
+    }
+
+    function renderMobCoupleCard(id1, id2) {
+      function personInner(id) {
+        const p = PEOPLE[id];
+        const avCls = ['mob-avatar', p.generation === 1 ? 'patriarch' : '', p.deceased ? 'deceased' : ''].filter(Boolean).join(' ');
+        const photoEl = p.photo
+          ? `<img src="${p.photo}" alt="${p.name}" loading="lazy" />`
+          : `<span class="mob-initials">${p.initials}</span>`;
+        return `
+          <div class="mob-card mob-card--coupled" data-id="${id}" role="button" tabindex="0" aria-label="${p.name}">
+            <div class="mob-avatar-wrap${p.deceased ? ' deceased' : ''}">
+              <div class="mob-avatar-frame" aria-hidden="true"></div>
+              <div class="${avCls}">${photoEl}</div>
+            </div>
+            <div class="mob-name">${p.name}</div>
+            ${p.nickname ? `<div class="mob-nickname">${p.nickname}</div>` : ''}
+            ${p.role !== p.nickname ? `<div class="mob-role">${p.role}</div>` : ''}
+            ${p.deceased ? '<div class="mob-deceased">Al-Fatihah</div>' : ''}
+          </div>`;
+      }
+      return `
+        <div class="mob-couple-row">
+          ${personInner(id1)}
+          <div class="mob-couple-conn" aria-hidden="true">
+            <div class="mob-couple-line"></div>
+            <div class="mob-couple-diamond"></div>
+            <div class="mob-couple-line"></div>
+          </div>
+          ${personInner(id2)}
+        </div>`;
+    }
+
+    function renderMobAll() {
+      const content = document.getElementById('ftMobContent');
+      if (!content) return;
+      const gens = [1, 2, 3, 4].filter(function (g) { return byGen[g] && byGen[g].length; });
+
+      content.innerHTML = gens.map(function (gen, idx) {
+        const genNum = ['', 'I', 'II', 'III', 'IV'][gen] || gen;
+        const isOpen = idx === 0;
+
+        // ── Group people by their parent couple ──────────────────────────
+        let bodyHtml;
+        if (gen === 1) {
+          // Root generation — no parent grouping
+          bodyHtml = `<div class="mob-gen-grid">${byGen[gen].map(renderMobCard).join('')}</div>`;
+        } else {
+          const groups = [];
+          const groupMap = {};
+          byGen[gen].forEach(function (id) {
+            const parents = parentMap[id];
+            const key = parents ? parents.join('|') : '__none__';
+            if (!groupMap[key]) {
+              const g = { parents: parents || null, children: [] };
+              groups.push(g);
+              groupMap[key] = g;
+            }
+            groupMap[key].children.push(id);
+          });
+
+          if (gen === 2) {
+            // ── Gen 2: static sub-headers + couple cards (no collapsible) ──
+            const gen2Set = new Set(byGen[2]);
+            const processed = new Set();
+
+            // How many distinct parent groups exist (excluding __none__)?
+            const namedGroupCount = groups.filter(function (g) { return g.parents; }).length;
+
+            bodyHtml = groups.map(function (group) {
+              // Only show sub-header when there are 2+ different parent groups
+              // (e.g. Gen 2 all share same Gen 1 parents → no sub-header needed)
+              let subHeaderHtml = '';
+              if (group.parents && namedGroupCount > 1) {
+                const parentNames = group.parents.map(function (pid) {
+                  return PEOPLE[pid] ? PEOPLE[pid].name : pid;
+                }).join(' & ');
+                subHeaderHtml = `
+                  <div class="mob-parent-header mob-parent-header--static">
+                    <svg class="mob-parent-icon" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+                      <ellipse cx="7" cy="3.2" rx="1.4" ry="2.8" fill="#c9922a"/>
+                      <ellipse cx="7" cy="10.8" rx="1.4" ry="2.8" fill="#c9922a"/>
+                      <ellipse cx="3.2" cy="7" rx="2.8" ry="1.4" fill="#c9922a"/>
+                      <ellipse cx="10.8" cy="7" rx="2.8" ry="1.4" fill="#c9922a"/>
+                      <circle cx="7" cy="7" r="1.8" fill="#173d28"/>
+                    </svg>
+                    <span class="mob-parent-name">Anak-anak <strong>${parentNames}</strong></span>
+                    <span class="mob-parent-count">${group.children.length} orang</span>
+                  </div>`;
+              }
+
+              const cards = [];
+              group.children.forEach(function (id) {
+                if (processed.has(id)) return;
+                const p = PEOPLE[id];
+                const spId = p.spouse;
+                if (spId && gen2Set.has(spId) && !processed.has(spId)) {
+                  cards.push(renderMobCoupleCard(id, spId));
+                  processed.add(id);
+                  processed.add(spId);
+                } else {
+                  cards.push(renderMobCard(id));
+                  processed.add(id);
+                }
+              });
+
+              if (cards.length === 0) return '';
+              const cls = group.parents ? 'mob-parent-group' : 'mob-parent-group mob-parent-group--flat';
+              return `<div class="${cls}">${subHeaderHtml}<div class="mob-gen-grid">${cards.join('')}</div></div>`;
+            }).filter(Boolean).join('');
+
+          } else {
+            // ── Gen 3 / 4: collapsible sub-headers + couple cards ──
+            const genSet = new Set(byGen[gen]);
+            const processed = new Set();
+
+            // Render children of a group with couple-card detection
+            function renderGroupCards(children) {
+              const cards = [];
+              children.forEach(function (id) {
+                if (processed.has(id)) return;
+                const p = PEOPLE[id];
+                const spId = p.spouse;
+                if (spId && genSet.has(spId) && !processed.has(spId)) {
+                  cards.push(renderMobCoupleCard(id, spId));
+                  processed.add(id);
+                  processed.add(spId);
+                } else {
+                  cards.push(renderMobCard(id));
+                  processed.add(id);
+                }
+              });
+              return cards.join('');
+            }
+
+            bodyHtml = groups.map(function (group) {
+              if (!group.parents) {
+                return `<div class="mob-parent-group mob-parent-group--flat"><div class="mob-gen-grid">${renderGroupCards(group.children)}</div></div>`;
+              }
+              const parentNames = group.parents.map(function (pid) {
+                return PEOPLE[pid] ? PEOPLE[pid].name : pid;
+              }).join(' & ');
+              return `
+                <div class="mob-parent-group">
+                  <button class="mob-parent-header" aria-expanded="false">
+                    <svg class="mob-parent-icon" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+                      <ellipse cx="7" cy="3.2" rx="1.4" ry="2.8" fill="#c9922a"/>
+                      <ellipse cx="7" cy="10.8" rx="1.4" ry="2.8" fill="#c9922a"/>
+                      <ellipse cx="3.2" cy="7" rx="2.8" ry="1.4" fill="#c9922a"/>
+                      <ellipse cx="10.8" cy="7" rx="2.8" ry="1.4" fill="#c9922a"/>
+                      <circle cx="7" cy="7" r="1.8" fill="#173d28"/>
+                    </svg>
+                    <span class="mob-parent-name">Anak-anak <strong>${parentNames}</strong></span>
+                    <span class="mob-parent-count">${group.children.length} orang</span>
+                    <svg class="mob-parent-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                  </button>
+                  <div class="mob-parent-body">
+                    <div class="mob-gen-grid">${renderGroupCards(group.children)}</div>
+                  </div>
+                </div>`;
+            }).join('');
+          }
+        }
+
+        return `
+          <div class="mob-gen-section${isOpen ? ' open' : ''}">
+            <button class="mob-gen-header" aria-expanded="${isOpen}" aria-controls="mob-body-${gen}">
+              <div class="mob-gen-numeral">${genNum}</div>
+              <div class="mob-gen-label">
+                <span class="mob-gen-title">${MOB_GEN_TITLES[gen] || 'Generasi ' + gen}</span>
+                <span class="mob-gen-sub">${MOB_GEN_SUBS[gen] || ''}</span>
+              </div>
+              <div class="mob-gen-count">${byGen[gen].length} orang</div>
+              <svg class="mob-gen-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            <div class="mob-gen-body" id="mob-body-${gen}">
+              ${bodyHtml}
+            </div>
+          </div>`;
+      }).join('');
+
+      // Accordion toggle
+      content.querySelectorAll('.mob-gen-header').forEach(function (header) {
+        header.addEventListener('click', function () {
+          const section = header.closest('.mob-gen-section');
+          const wasOpen = section.classList.contains('open');
+          content.querySelectorAll('.mob-gen-section').forEach(function (s) {
+            s.classList.remove('open');
+            s.querySelector('.mob-gen-header').setAttribute('aria-expanded', 'false');
+          });
+          if (!wasOpen) {
+            section.classList.add('open');
+            header.setAttribute('aria-expanded', 'true');
+          }
+        });
+      });
+
+      // Sub-header toggle — only Gen 3/4 (button elements); Gen 2 uses a static div
+      content.querySelectorAll('button.mob-parent-header').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          const group = btn.closest('.mob-parent-group');
+          const isOpen = group.classList.toggle('open');
+          btn.setAttribute('aria-expanded', isOpen);
+        });
+      });
+
+      // Card tap → open modal
+      content.querySelectorAll('.mob-card').forEach(function (card) {
+        const id = card.dataset.id;
+        card.addEventListener('click', function () { openModal(id); });
+        card.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(id); }
+        });
+      });
+    }
+
+    renderMobAll();
+
+    // Drag-to-scroll on the tree wrapper
+    const wrap = document.getElementById('treeWrap');
+    let isDragging = false, startX = 0, scrollLeft = 0;
+    wrap.addEventListener('mousedown', function (e) {
+      isDragging = true;
+      startX = e.pageX - wrap.offsetLeft;
+      scrollLeft = wrap.scrollLeft;
+      wrap.style.cursor = 'grabbing';
+    });
+    wrap.addEventListener('mouseleave', function () { isDragging = false; wrap.style.cursor = 'grab'; });
+    wrap.addEventListener('mouseup',    function () { isDragging = false; wrap.style.cursor = 'grab'; });
+    wrap.addEventListener('mousemove',  function (e) {
+      if (!isDragging) return;
+      e.preventDefault();
+      wrap.scrollLeft = scrollLeft - (e.pageX - wrap.offsetLeft - startX) * 1.2;
+    });
+  });
+</script>
+
+<style is:global>
+  /* ── KEYFRAME ANIMATIONS ── */
+  @keyframes ft-fade-up {
+    from { opacity: 0; transform: translateY(18px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0)    scale(1); }
+  }
+  @keyframes ft-diamond-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(201,146,42,0); }
+    50%       { box-shadow: 0 0 0 5px rgba(201,146,42,0.35); }
+  }
+  @keyframes ft-head-fade {
+    from { opacity: 0; transform: translateY(-12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes ft-legend-fade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* ── CSS VARIABLES ── */
+  #ft {
+    --hijau:  #173d28;
+    --hijau2: #1e5235;
+    --hijau3: #2d7a4f;
+    --emas:   #c9922a;
+    --emas2:  #e8c46a;
+    --emas3:  #f5e4b0;
+    --cream:  #fdf7ec;
+    --cream2: #f7edda;
+    --text1:  #1a0e00;
+    --text2:  #4a3010;
+    --text3:  #8a6030;
+    background: var(--cream);
+    position: relative;
+    overflow: hidden;
+    font-family: 'Lato', sans-serif;
+  }
+
+  /* ── SONGKET BG ── */
+  .songket-bg {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    opacity: 0.08;
+    z-index: 0;
+  }
+
+  /* ── HEADER ── */
+  .ft-head {
+    background: var(--hijau);
+    position: relative; z-index: 1;
+    animation: ft-head-fade 0.6s ease both;
+  }
+  .head-top-stripe {
+    height: 6px;
+    background: linear-gradient(90deg, var(--hijau2), var(--emas), var(--emas2), var(--emas), var(--hijau2));
+  }
+  .ft-head-inner {
+    position: relative; z-index: 2;
+    text-align: center;
+    padding: 30px 20px 24px;
+  }
+  .head-title-row {
+    display: flex; justify-content: center;
+    align-items: center; gap: 14px;
+    margin-bottom: 10px;
+  }
+  .ft-head-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(34px, 6vw, 52px);
+    font-weight: 700;
+    color: var(--emas2);
+    letter-spacing: 0.06em;
+    line-height: 1.15;
+    text-shadow: 0 2px 16px rgba(201,146,42,0.25);
+  }
+  .ft-head-sub {
+    font-size: clamp(12px, 1.8vw, 15px);
+    font-weight: 400;
+    color: var(--emas3);
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    opacity: 0.9;
+  }
+  .head-diamonds {
+    display: flex; justify-content: center;
+    align-items: center; gap: 10px;
+  }
+  .head-diamond-line {
+    flex: 1; max-width: 90px; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--emas), transparent);
+    opacity: 0.7;
+  }
+  .head-bottom-stripe {
+    height: 5px;
+    background: linear-gradient(90deg, var(--hijau2), var(--emas), var(--emas2), var(--emas), var(--hijau2));
+  }
+
+  /* ── TREE AREA ── */
+  .ft-tree-wrap {
+    overflow-x: auto;
+    overflow-y: visible;
+    padding: 36px 28px 24px;
+    cursor: grab;
+    position: relative; z-index: 1;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ft-tree-wrap:active { cursor: grabbing; }
+  .ft-tree {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 860px;
+    width: max-content;
+    margin: 0 auto;
+    zoom: 1.15;
+    animation: ft-fade-up 0.7s 0.15s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* ── FAMILY GROUP ── */
+  .ft-gen-group {
+    display: flex; flex-direction: column; align-items: center;
+  }
+
+  /* Fixed-height slot that lives in ft-child-col, above ft-gen-group.
+     The note-slot is position:absolute so it is OUT OF FLOW and cannot
+     affect the couple's vertical position.  The couple's position is
+     determined solely by the column's padding-top, which is the same
+     for every sibling in the group. */
+
+  /* All columns in a noted group get extra padding so the couple starts
+     at the same Y as in noted siblings. */
+  .ft-children--with-notes > .ft-child-col {
+    padding-top: calc(22px + 26px); /* 48px total */
+  }
+  /* Vertical connector extended to match the new padding */
+  .ft-children--with-notes > .ft-child-col::after {
+    height: calc(22px + 26px);
+  }
+  /* Note slot is absolutely positioned inside the padding area —
+     it does NOT participate in flex flow so it cannot shift the couple. */
+  .ft-note-slot {
+    position: absolute;
+    top: 22px;          /* sit just below the connector's original end */
+    left: 0; right: 0;
+    height: 26px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ft-marriage-note-inner {
+    font-size: 9px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.14em;
+    color: #173d28;
+    background: linear-gradient(135deg, rgba(201,146,42,0.18), rgba(201,146,42,0.08));
+    border: 1px solid rgba(201,146,42,0.45);
+    border-radius: 20px;
+    padding: 2px 10px;
+    white-space: nowrap;
+  }
+  .ft-couple {
+    display: flex; align-items: center; gap: 0;
+  }
+  .ft-conn {
+    display: flex; align-items: center; gap: 0;
+    width: 34px; flex-shrink: 0;
+  }
+  .ft-conn-line {
+    flex: 1; height: 2px;
+    background: linear-gradient(90deg, var(--emas), var(--emas2), var(--emas));
+  }
+  .ft-diamond {
+    width: 10px; height: 10px;
+    background: var(--emas);
+    transform: rotate(45deg);
+    flex-shrink: 0;
+    border: 1.5px solid var(--emas2);
+    animation: ft-diamond-pulse 3s ease-in-out infinite;
+    will-change: box-shadow;
+  }
+  .ft-connector {
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .v-line {
+    width: 2px;
+    background: linear-gradient(to bottom, var(--emas), rgba(201,146,42,0.4));
+  }
+  .v-short { height: 22px; }
+  .ft-children {
+    display: flex; justify-content: center; align-items: flex-start;
+  }
+
+  /*
+   * CSS-native H-branch + V-drop.
+   * Each ft-child-col draws its own horizontal segment (::before) and
+   * vertical drop (::after) using absolute positioning. Adjacent ::before
+   * segments touch edge-to-edge, forming a seamless horizontal branch line
+   * regardless of how wide each child subtree is — no JS measurement needed.
+   *
+   *  :first-child::before  starts at 50% (center of first child)
+   *  middle children       span full width including margins
+   *  :last-child::before   ends  at 50% (center of last child)
+   *  single child          left:50% + right:50% = zero width → invisible
+   */
+  .ft-child-col {
+    display: flex; flex-direction: column; align-items: center;
+    margin: 0 6px;
+    padding-top: 22px;
+    position: relative;
+  }
+  /* Horizontal branch segment */
+  .ft-child-col::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -6px; right: -6px;
+    height: 2px;
+    background: var(--emas);
+  }
+  .ft-child-col:first-child::before { left: 50%; }
+  .ft-child-col:last-child::before  { right: 50%; }
+  /* Vertical drop from H-branch down to the child's couple */
+  .ft-child-col::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 2px; height: 22px;
+    background: linear-gradient(to bottom, var(--emas), rgba(201,146,42,0.5));
+  }
+
+  /* ── PERSON ── */
+  .ft-person {
+    display: flex; flex-direction: column; align-items: center;
+    cursor: pointer;
+    padding: 6px 4px;
+    border-radius: 10px;
+    transition:
+      transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+      background 0.18s,
+      filter 0.22s;
+    outline: none;
+    will-change: transform;
+  }
+  .ft-person:hover, .ft-person:focus-visible {
+    transform: translateY(-6px) scale(1.07);
+    background: rgba(201, 146, 42, 0.08);
+    filter: drop-shadow(0 8px 16px rgba(201,146,42,0.35));
+  }
+  .ft-person:focus-visible { box-shadow: 0 0 0 2px var(--emas); }
+
+  /*
+   * Avatar layout — both rings share the same 76×76 parent so they are
+   * always mathematically concentric, regardless of block-flow rounding.
+   *
+   *  ft-avatar-wrap  76×76  (position: relative — coordinate origin)
+   *  ft-avatar-frame  inset:0  → 76×76  (the outer ring)
+   *  ft-avatar        inset:4px → 68×68  (the filled circle, centred)
+   */
+  .ft-avatar-wrap {
+    position: relative;
+    width: 76px; height: 76px;
+    flex-shrink: 0;
+  }
+  .ft-avatar-frame {
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    border: 2px solid var(--emas);
+    z-index: 1;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .ft-person:hover .ft-avatar-frame,
+  .ft-person:focus-visible .ft-avatar-frame {
+    border-color: var(--emas2);
+    box-shadow: 0 0 0 3px rgba(232,196,106,0.2);
+  }
+  /* Diamond side accents removed — clean circle only */
+  .ft-avatar-frame::before,
+  .ft-avatar-frame::after { content: none; }
+
+  .ft-avatar-wrap.deceased .ft-avatar-frame {
+    border-style: dashed;
+    border-color: var(--text3);
+  }
+  .ft-avatar-wrap.deceased .ft-avatar-frame::before,
+  .ft-avatar-wrap.deceased .ft-avatar-frame::after {
+    background: var(--text3);
+  }
+
+  .ft-avatar {
+    position: absolute; inset: 4px; /* 68×68, perfectly centred in the 76×76 wrap */
+    border-radius: 50%;
+    background: var(--emas3);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    z-index: 2;
+    border: 2px solid var(--cream);
+    box-shadow: inset 0 0 0 2px rgba(201,146,42,0.15);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .ft-person:hover .ft-avatar,
+  .ft-person:focus-visible .ft-avatar {
+    border-color: var(--emas2);
+    box-shadow: inset 0 0 0 2px rgba(232,196,106,0.4);
+  }
+
+  .ft-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .ft-initials {
+    font-family: 'Playfair Display', serif;
+    font-size: 19px; font-weight: 700; color: var(--hijau);
+  }
+  .ft-avatar.patriarch {
+    background: radial-gradient(circle at 35% 35%, var(--hijau3), var(--hijau));
+  }
+  .ft-avatar.patriarch .ft-initials { color: var(--emas2); }
+  .ft-avatar.deceased  { filter: grayscale(0.65); opacity: 0.85; }
+
+  .ft-name {
+    font-size: 11px; font-weight: 400;
+    color: var(--text1);
+    text-align: center;
+    max-width: 84px;
+    line-height: 1.3;
+    margin-top: 8px;
+    transition: color 0.18s;
+  }
+  .ft-person:hover .ft-name { color: var(--emas); }
+  .ft-name.patriarch-name {
+    font-size: 12px; font-weight: 600; color: var(--hijau2);
+  }
+  .ft-person:hover .ft-name.patriarch-name { color: var(--emas); }
+
+  /* ── LEGEND ── */
+  .ft-legend {
+    display: flex; flex-wrap: wrap;
+    justify-content: center; gap: 14px;
+    padding: 12px 16px 16px;
+    background: var(--cream2);
+    border-top: 1px solid rgba(201,146,42,0.3);
+    position: relative; z-index: 1;
+    animation: ft-legend-fade 0.8s 0.5s both;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 10px; color: var(--text2);
+  }
+  .legend-item.hint { color: var(--text3); }
+  .legend-circle {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    border: 2px solid var(--emas);
+    background: var(--emas3);
+    flex-shrink: 0;
+  }
+  .legend-circle.patriarch-circle { background: var(--hijau); border-color: var(--emas2); }
+  .legend-circle.deceased-circle  { filter: grayscale(0.6); border-style: dashed; border-color: var(--text3); }
+
+  /* ── MOBILE VIEW — Collapsible Accordion ── */
+  .ft-mobile { display: none; }
+
+  @media (max-width: 768px) {
+    /* Remove the 100vh min-height so body shrinks to content height */
+    html, body { min-height: 0 !important; background: #fdf7ec; }
+    /* Prevent #ft from stretching beyond its accordion content */
+    #ft { min-height: 0; height: auto; overflow: visible; }
+    .ft-tree-wrap { display: none !important; }
+    .ft-legend    { display: none !important; }
+    .ft-mobile    { display: block; }
+  }
+
+  .ft-mobile-content {
+    padding: 14px 12px 24px;
+    display: flex; flex-direction: column; gap: 10px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ── Accordion section ── */
+  .mob-gen-section {
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid rgba(201,146,42,0.22);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+
+  /* ── Clickable header row ── */
+  .mob-gen-header {
+    width: 100%;
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px;
+    background: #fff;
+    border: none; cursor: pointer; text-align: left;
+    transition: background 0.25s;
+    -webkit-tap-highlight-color: transparent;
+    position: relative;
+  }
+  /* Gold left accent bar */
+  .mob-gen-header::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 10px; bottom: 10px;
+    width: 3px;
+    background: linear-gradient(to bottom, var(--emas2), var(--emas));
+    border-radius: 0 3px 3px 0;
+    transition: opacity 0.25s;
+  }
+  .mob-gen-header:active { background: rgba(201,146,42,0.05); }
+
+  /* Open state: deep green with gold accents */
+  .mob-gen-section.open > .mob-gen-header {
+    background: linear-gradient(135deg, #173d28 0%, #1e5235 100%);
+  }
+  .mob-gen-section.open > .mob-gen-header::before {
+    background: linear-gradient(to bottom, var(--emas2), rgba(232,196,106,0.4));
+  }
+
+  /* Roman numeral badge */
+  .mob-gen-numeral {
+    width: 38px; height: 38px; flex-shrink: 0;
+    border-radius: 50%;
+    border: 2px solid var(--emas);
+    background: linear-gradient(135deg, rgba(201,146,42,0.14), rgba(201,146,42,0.06));
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-size: 13px; font-weight: 700;
+    color: var(--emas);
+    transition: all 0.25s;
+  }
+  .mob-gen-section.open > .mob-gen-header .mob-gen-numeral {
+    background: rgba(232,196,106,0.18);
+    color: var(--emas2); border-color: var(--emas2);
+    box-shadow: 0 0 0 3px rgba(232,196,106,0.12);
+  }
+
+  /* Title + subtitle */
+  .mob-gen-label { flex: 1; }
+  .mob-gen-title {
+    display: block;
+    font-family: 'Playfair Display', serif;
+    font-size: 14px; font-weight: 700;
+    color: #1a0e00;
+    transition: color 0.25s;
+  }
+  .mob-gen-section.open > .mob-gen-header .mob-gen-title { color: var(--emas2); }
+  .mob-gen-sub {
+    display: block; margin-top: 2px;
+    font-size: 9px; font-weight: 700;
+    color: var(--emas); letter-spacing: 0.15em; text-transform: uppercase;
+    transition: color 0.25s;
+  }
+  .mob-gen-section.open > .mob-gen-header .mob-gen-sub { color: rgba(232,196,106,0.65); }
+
+  /* Member count pill */
+  .mob-gen-count {
+    font-size: 10px; font-weight: 600;
+    color: var(--hijau);
+    background: rgba(23,61,40,0.07);
+    border: 1px solid rgba(23,61,40,0.14);
+    border-radius: 20px; padding: 3px 10px;
+    flex-shrink: 0;
+    transition: all 0.25s;
+  }
+  .mob-gen-section.open > .mob-gen-header .mob-gen-count {
+    background: rgba(232,196,106,0.15);
+    color: var(--emas2); border-color: rgba(232,196,106,0.3);
+  }
+
+  /* Chevron arrow */
+  .mob-gen-chevron {
+    flex-shrink: 0; color: var(--text3);
+    transition: transform 0.28s cubic-bezier(0.4,0,0.2,1), color 0.25s;
+  }
+  .mob-gen-section.open > .mob-gen-header .mob-gen-chevron {
+    transform: rotate(180deg); color: var(--emas2);
+  }
+
+  /* Collapsible body */
+  .mob-gen-body {
+    max-height: 0; overflow: hidden;
+    transition: max-height 0.38s cubic-bezier(0.4,0,0.2,1);
+    background: #fafaf8;
+  }
+  .mob-gen-section.open > .mob-gen-body {
+    max-height: 4800px;
+    transition: max-height 0.5s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  /* ── Parent sub-group (collapsible) ── */
+  .mob-parent-group {
+    padding: 10px 14px;
+    border-top: 1px solid rgba(201,146,42,0.1);
+  }
+  .mob-parent-group:first-child { border-top: none; padding-top: 12px; }
+  .mob-parent-group--flat { padding: 14px; }
+
+  /* Sub-header button */
+  .mob-parent-header {
+    width: 100%; display: flex; align-items: center; gap: 8px;
+    background: rgba(201,146,42,0.05);
+    border: 1px solid rgba(201,146,42,0.15);
+    border-radius: 8px; cursor: pointer;
+    padding: 8px 12px; text-align: left;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .mob-parent-header:active { background: rgba(201,146,42,0.12); }
+  .mob-parent-group.open > .mob-parent-header {
+    background: rgba(23,61,40,0.06);
+    border-color: rgba(23,61,40,0.2);
+  }
+
+  .mob-parent-icon {
+    flex-shrink: 0;
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.2s;
+    opacity: 0.85;
+  }
+  .mob-parent-group.open > .mob-parent-header .mob-parent-icon {
+    transform: rotate(45deg);
+    opacity: 1;
+  }
+
+  .mob-parent-name { flex: 1; font-size: 11px; color: var(--text2); }
+  .mob-parent-name strong { color: var(--hijau); font-weight: 700; }
+  .mob-parent-group.open > .mob-parent-header .mob-parent-name strong { color: var(--hijau2); }
+
+  .mob-parent-count {
+    font-size: 9px; font-weight: 600;
+    color: var(--text3);
+    background: rgba(201,146,42,0.08);
+    border: 1px solid rgba(201,146,42,0.15);
+    border-radius: 12px; padding: 1px 7px;
+    flex-shrink: 0;
+  }
+  .mob-parent-chevron {
+    flex-shrink: 0; color: var(--text3);
+    transition: transform 0.25s cubic-bezier(0.4,0,0.2,1), color 0.2s;
+  }
+  .mob-parent-group.open > .mob-parent-header .mob-parent-chevron {
+    transform: rotate(180deg); color: var(--emas);
+  }
+
+  /* Collapsible sub-body */
+  .mob-parent-body {
+    max-height: 0; overflow: hidden;
+    transition: max-height 0.3s cubic-bezier(0.4,0,0.2,1);
+  }
+  .mob-parent-group.open > .mob-parent-body {
+    max-height: 1200px;
+  }
+  .mob-parent-body .mob-gen-grid { padding-top: 10px; }
+
+  /* Card grid */
+  .mob-gen-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  /* Flat grid (Gen 1 / ungrouped) */
+  .mob-parent-group--flat .mob-gen-grid { padding: 0; }
+
+  /* ── Person card ── */
+  .mob-card {
+    background: #ffffff;
+    border: 1px solid rgba(201,146,42,0.3);
+    border-top: 2.5px solid var(--emas);
+    border-radius: 12px;
+    padding: 14px 10px 12px;
+    display: flex; flex-direction: column; align-items: center;
+    cursor: pointer; text-align: center;
+    box-shadow: 0 3px 12px rgba(23,61,40,0.09), 0 1px 4px rgba(23,61,40,0.05);
+    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mob-card:hover {
+    box-shadow: 0 6px 20px rgba(23,61,40,0.13), 0 2px 6px rgba(23,61,40,0.07);
+    border-color: rgba(201,146,42,0.55);
+    transform: translateY(-2px);
+  }
+  .mob-card:active { transform: scale(0.97); box-shadow: 0 1px 4px rgba(23,61,40,0.08); }
+
+  /*
+   * Concentric avatar rings (same origin-pinned pattern as tree/modal):
+   *   mob-avatar-wrap  64×64  origin
+   *   mob-avatar-frame inset:0  → outer ring
+   *   mob-avatar       inset:4px → filled circle
+   */
+  .mob-avatar-wrap {
+    position: relative; width: 64px; height: 64px;
+    flex-shrink: 0; margin-bottom: 10px;
+  }
+  .mob-avatar-frame {
+    position: absolute; inset: 0; border-radius: 50%;
+    border: 2px solid var(--emas); z-index: 1;
+  }
+  .mob-avatar-wrap.deceased .mob-avatar-frame {
+    border-style: dashed; border-color: var(--text3);
+  }
+  .mob-avatar {
+    position: absolute; inset: 4px; border-radius: 50%;
+    background: var(--emas3);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; z-index: 2;
+  }
+  .mob-avatar.patriarch {
+    background: radial-gradient(circle at 35% 35%, var(--hijau3), var(--hijau));
+  }
+  .mob-avatar.deceased { filter: grayscale(0.65); opacity: 0.85; }
+  .mob-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .mob-initials {
+    font-family: 'Playfair Display', serif;
+    font-size: 16px; font-weight: 700; color: var(--hijau);
+  }
+  .mob-avatar.patriarch .mob-initials { color: var(--emas2); }
+
+  .mob-name {
+    font-size: 12px; font-weight: 700;
+    color: var(--text1); line-height: 1.3; margin-bottom: 2px;
+  }
+  .mob-nickname {
+    font-size: 10px; font-style: italic; font-weight: 600;
+    color: var(--emas); letter-spacing: 0.06em;
+    margin-bottom: 3px;
+  }
+  .mob-role { font-size: 10px; color: var(--text2); line-height: 1.3; }
+  .mob-deceased {
+    margin-top: 5px; font-size: 9px; font-style: italic;
+    color: var(--text3); letter-spacing: 0.07em;
+  }
+
+  /* ── Gen 2 static sub-header ── */
+  .mob-parent-header--static {
+    cursor: default;
+    /* Visually slightly different from the collapsible button */
+    background: rgba(23,61,40,0.05);
+    border-color: rgba(23,61,40,0.12);
+  }
+  .mob-parent-header--static .mob-parent-name strong { color: var(--hijau2); }
+
+  /* ── Couple row ── */
+  .mob-couple-row {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: stretch;
+    background: #ffffff;
+    border: 1px solid rgba(201,146,42,0.3);
+    border-top: 2.5px solid var(--emas);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 3px 12px rgba(23,61,40,0.09), 0 1px 4px rgba(23,61,40,0.05);
+    transition: box-shadow 0.15s, border-color 0.15s, transform 0.15s;
+  }
+  .mob-couple-row:hover {
+    box-shadow: 0 6px 20px rgba(23,61,40,0.13), 0 2px 6px rgba(23,61,40,0.07);
+    border-color: rgba(201,146,42,0.55);
+    transform: translateY(-2px);
+  }
+  /* Cards inside a couple row */
+  .mob-card--coupled {
+    flex: 1;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+    min-width: 0;
+  }
+  .mob-card--coupled:hover { transform: none; box-shadow: none; }
+  .mob-card--coupled:first-child { border-right: 1px solid rgba(201,146,42,0.25); }
+
+  /* Horizontal connector between the two people */
+  .mob-couple-conn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    padding: 0 3px;
+    gap: 3px;
+  }
+  .mob-couple-line {
+    width: 1.5px;
+    flex: 1;
+    max-height: 18px;
+    background: linear-gradient(to bottom, transparent, var(--emas), transparent);
+  }
+  .mob-couple-diamond {
+    width: 7px; height: 7px;
+    background: var(--emas);
+    transform: rotate(45deg);
+    flex-shrink: 0;
+    border: 1px solid var(--emas2);
+  }
+</style>

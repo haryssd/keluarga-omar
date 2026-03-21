@@ -1,0 +1,431 @@
+---
+// Modal.astro — detail modal, controlled by JS
+---
+<div id="ft-overlay" aria-modal="true" role="dialog" aria-hidden="true">
+  <div id="ft-modal">
+    <div class="modal-head">
+      <button class="modal-close" id="modalClose" aria-label="Tutup">&#x2715;</button>
+      <div class="modal-diamonds">
+        <svg width="80" height="12" viewBox="0 0 80 12" aria-hidden="true">
+          <rect x="2"  y="4" width="5" height="5" transform="rotate(45 4.5 6.5)"  fill="#e8c46a" opacity="0.35"/>
+          <rect x="13" y="3" width="7" height="7" transform="rotate(45 16.5 6.5)" fill="#e8c46a" opacity="0.6"/>
+          <rect x="27" y="1" width="10" height="10" transform="rotate(45 32 6.5)" fill="#e8c46a"/>
+          <rect x="41" y="1" width="10" height="10" transform="rotate(45 46 6.5)" fill="#e8c46a"/>
+          <rect x="55" y="3" width="7"  height="7"  transform="rotate(45 58.5 6.5)" fill="#e8c46a" opacity="0.6"/>
+          <rect x="67" y="4" width="5"  height="5"  transform="rotate(45 69.5 6.5)" fill="#e8c46a" opacity="0.35"/>
+        </svg>
+      </div>
+      <div class="modal-avatar-wrap">
+        <div class="modal-avatar" id="mAvatar">
+          <span class="modal-initials" id="mInitials"></span>
+        </div>
+      </div>
+      <div class="modal-name" id="mName"></div>
+      <div id="mNickname" class="modal-nickname" style="display:none"></div>
+      <div class="modal-role" id="mRole"></div>
+      <div id="mAlfatihah" class="modal-alfatihah" style="display:none">
+        <span>&#x2605; Al-Fatihah &#x2605;</span>
+      </div>
+    </div>
+    <div class="modal-divider">
+      <div class="modal-divider-diamond"></div>
+    </div>
+    <div class="modal-body" id="mBody"></div>
+  </div>
+</div>
+
+<style is:global>
+  /* ── ANIMATIONS ── */
+  @keyframes overlay-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  /*
+   * Smooth ease-out — no overshoot (the old bouncy cubic-bezier caused
+   * the browser to paint extra frames beyond scale(1), which felt laggy).
+   * Smaller start-scale (0.94) + shorter travel = snappier feel.
+   */
+  @keyframes modal-scale-in {
+    from { opacity: 0; transform: scale(0.94) translateY(8px); }
+    to   { opacity: 1; transform: scale(1)    translateY(0); }
+  }
+
+  #ft-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 22, 13, 0.72);
+    /* Reduced blur (3px instead of 5px) — cheaper to composite each frame */
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  #ft-overlay.show {
+    display: flex;
+    animation: overlay-fade-in 0.18s ease both;
+  }
+  #ft-overlay.show #ft-modal {
+    /* cubic-bezier(0.16,1,0.3,1) = smooth fast-out, no bounce */
+    animation: modal-scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+    will-change: transform, opacity;
+  }
+
+  #ft-modal {
+    background: #fdf7ec;
+    border-radius: 20px;
+    width: 420px;
+    max-width: 94vw;
+    border: 1.5px solid #c9922a;
+    overflow: hidden;
+    box-shadow:
+      0 4px 6px rgba(0,0,0,0.07),
+      0 16px 48px rgba(0,0,0,0.26),
+      0 0 0 1px rgba(232,196,106,0.12);
+  }
+  .modal-head {
+    background: linear-gradient(160deg, #1e5235 0%, #173d28 60%);
+    padding: 16px 16px 18px;
+    text-align: center;
+    position: relative;
+  }
+  .modal-close {
+    position: absolute;
+    top: 12px; right: 14px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(232,196,106,0.25);
+    border-radius: 50%;
+    width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    color: #e8c46a; font-size: 14px;
+    cursor: pointer; line-height: 1;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    font-family: inherit;
+  }
+  .modal-close:hover {
+    background: rgba(255,255,255,0.16);
+    color: #fff;
+    border-color: rgba(255,255,255,0.4);
+  }
+  .modal-diamonds { margin-bottom: 12px; }
+  /*
+   * Modal avatar — concentric rings, all pinned from the same origin.
+   *
+   *  modal-avatar-wrap  116×116  (coordinate origin)
+   *  ::before  inset:0    → 116×116  outer glow ring
+   *  ::after   inset:7px  → 102×102  inner accent ring
+   *  modal-avatar inset:14px → 88×88  filled avatar circle
+   */
+  .modal-avatar-wrap {
+    width: 116px; height: 116px;
+    margin: 0 auto 14px;
+    position: relative;
+  }
+  /* Outer glow ring */
+  .modal-avatar-wrap::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1.5px solid rgba(201,146,42,0.5);
+    z-index: 0;
+  }
+  /* Inner accent ring */
+  .modal-avatar-wrap::after {
+    content: '';
+    position: absolute;
+    inset: 7px;
+    border-radius: 50%;
+    border: 1px solid rgba(232,196,106,0.3);
+    z-index: 0;
+  }
+  .modal-avatar {
+    position: absolute; inset: 14px; /* 88×88, centred in the 116×116 wrap */
+    border-radius: 50%;
+    background: #f5e4b0;
+    border: 2px solid rgba(253,247,236,0.8);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    z-index: 1;
+    box-shadow: inset 0 0 0 2px rgba(201,146,42,0.15);
+  }
+  .modal-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .modal-initials {
+    font-family: 'Playfair Display', serif;
+    font-size: 34px; font-weight: 700;
+    color: #173d28;
+  }
+  .modal-avatar.patriarch {
+    background: radial-gradient(circle at 35% 35%, #2d7a4f, #173d28);
+  }
+  .modal-avatar.patriarch .modal-initials { color: #e8c46a; }
+  .modal-avatar.deceased { filter: grayscale(0.6); opacity: 0.85; }
+  .modal-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px; font-weight: 700;
+    color: #e8c46a;
+    line-height: 1.3;
+    text-shadow: 0 1px 8px rgba(201,146,42,0.2);
+  }
+  .modal-nickname {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(201,146,42,0.18);
+    border: 1px solid rgba(201,146,42,0.45);
+    border-radius: 20px;
+    color: #e8c46a;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    padding: 3px 14px;
+    margin-top: 7px;
+    font-style: italic;
+  }
+  .modal-role {
+    font-size: 11px; color: #f5e4b0;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    margin-top: 5px; font-weight: 300;
+    opacity: 0.85;
+  }
+  .modal-alfatihah {
+    margin-top: 10px;
+    display: inline-block;
+    background: rgba(255,255,255,0.07);
+    color: #e8c46a;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    padding: 4px 14px;
+    border-radius: 20px;
+    border: 1px solid rgba(201,146,42,0.5);
+    font-style: italic;
+  }
+  .modal-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #c9922a, transparent);
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal-divider-diamond {
+    width: 8px; height: 8px;
+    background: #c9922a;
+    transform: rotate(45deg);
+    position: absolute; top: -4px;
+  }
+  .modal-body { padding: 18px 22px 22px; }
+
+  /* ── Sections ── */
+  .modal-section { margin-bottom: 16px; }
+  .modal-section:last-of-type { margin-bottom: 0; }
+  .modal-section-title {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: #c9922a;
+    padding-bottom: 7px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid rgba(201,146,42,0.22);
+  }
+
+  /* ── Info rows inside a section ── */
+  .modal-info-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(201,146,42,0.09);
+  }
+  .modal-info-row:last-child { border-bottom: none; }
+  .modal-label {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: #8a6030;
+  }
+  .modal-val {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1a0e00;
+    line-height: 1.4;
+  }
+
+  /* ── Generation badge ── */
+  .modal-gen-badge {
+    display: inline-flex;
+    align-items: center;
+    background: #173d28;
+    color: #e8c46a;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 14px;
+    border-radius: 20px;
+    border: 1px solid rgba(201,146,42,0.35);
+    width: fit-content;
+    letter-spacing: 0.03em;
+  }
+
+  /* ── Spouse card ── */
+  .modal-spouse-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(23,61,40,0.05);
+    border: 1px solid rgba(201,146,42,0.18);
+    border-radius: 12px;
+    padding: 10px 14px;
+  }
+  .modal-spouse-avatar {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #2d7a4f, #173d28);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-size: 13px; font-weight: 700;
+    color: #e8c46a;
+    flex-shrink: 0;
+    border: 1.5px solid rgba(201,146,42,0.4);
+  }
+  .modal-spouse-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1a0e00;
+    line-height: 1.3;
+  }
+
+  /* ── Lineage ancestry timeline ── */
+  .modal-lineage {
+    background: rgba(23,61,40,0.04);
+    border: 1px solid rgba(201,146,42,0.2);
+    border-radius: 12px;
+    padding: 12px 14px 12px;
+    margin-bottom: 14px;
+  }
+  .ml-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 8px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: #c9922a;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(201,146,42,0.18);
+  }
+
+  /* Each ancestor row */
+  .ml-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  /* Left spine: dot + connecting line */
+  .ml-spine {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 14px;
+    flex-shrink: 0;
+    padding-top: 3px;
+  }
+  .ml-dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: #fdf7ec;
+    border: 2px solid #c9922a;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 2px rgba(201,146,42,0.15);
+  }
+  .ml-line {
+    width: 1.5px;
+    flex: 1;
+    min-height: 16px;
+    background: linear-gradient(to bottom, #c9922a 0%, rgba(201,146,42,0.2) 100%);
+    margin: 3px 0;
+  }
+
+  /* Current person — diamond marker */
+  .ml-dot-current {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    background: #173d28;
+    border: 2px solid #c9922a;
+    transform: rotate(45deg);
+    box-shadow: 0 0 0 3px rgba(201,146,42,0.15);
+  }
+
+  /* Right side content */
+  .ml-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding-bottom: 12px;
+  }
+  .ml-row:last-child .ml-info { padding-bottom: 0; }
+
+  /* Tappable ancestor name */
+  .ml-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e5235;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-decoration-color: rgba(30,82,53,0.35);
+    text-underline-offset: 2px;
+    transition: color 0.15s;
+    line-height: 1.3;
+  }
+  .ml-name:hover { color: #c9922a; text-decoration-color: rgba(201,146,42,0.5); }
+
+  /* Generation label below name */
+  .ml-gen {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.13em;
+    color: #8a6030;
+  }
+
+  /* Current person row */
+  .ml-row-current .ml-info { padding-bottom: 0; }
+  .ml-name-current {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1a0e00;
+    line-height: 1.3;
+  }
+  .ml-gen-current {
+    color: #c9922a;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.13em;
+  }
+
+  /* ── No-photo alert ── */
+  .modal-photo-alert {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(201,146,42,0.07);
+    border: 1px solid rgba(201,146,42,0.28);
+    border-radius: 8px;
+    padding: 9px 13px;
+    margin-top: 16px;
+    color: #8a6030;
+    font-size: 12px;
+    font-style: italic;
+  }
+</style>
