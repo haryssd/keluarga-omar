@@ -49,7 +49,7 @@
     "p13": { "name": "Yaakob",                "nickname": null,         "initials": "YK", "role": "Menantu",        "generation": 2, "deceased": true,  "spouse": "p12", "photo": "" },
 
     "p14": { "name": "Abdul Rahman",          "nickname": "Pak Muda",   "initials": "AR", "role": "Anak ke-3",      "generation": 2, "deceased": false, "spouse": "p15", "photo": "" },
-    "p15": { "name": "Rogayah Mahmud",  "nickname": null,         "initials": "RM", "role": "Menantu",        "generation": 2, "deceased": false, "spouse": "p14", "photo": "" },
+    "p15": { "name": "Rogayah Mahmud",  "nickname": "Mak Muda",   "initials": "RM", "role": "Menantu",        "generation": 2, "deceased": false, "spouse": "p14", "photo": "" },
 
     "p16": { "name": "Zawiah",                "nickname": "Kak Cik",    "initials": "ZW", "role": "Anak ke-4",      "generation": 2, "deceased": false, "spouse": "p17", "photo": "" },
     "p17": { "name": "Said",                  "nickname": null,         "initials": "SD", "role": "Menantu",        "generation": 2, "deceased": false, "spouse": "p16", "photo": "" },

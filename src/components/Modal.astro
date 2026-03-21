@@ -40,14 +40,17 @@
     from { opacity: 0; }
     to   { opacity: 1; }
   }
-  /*
-   * Smooth ease-out — no overshoot (the old bouncy cubic-bezier caused
-   * the browser to paint extra frames beyond scale(1), which felt laggy).
-   * Smaller start-scale (0.94) + shorter travel = snappier feel.
-   */
+  @keyframes overlay-fade-out {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+  }
   @keyframes modal-scale-in {
-    from { opacity: 0; transform: scale(0.94) translateY(8px); }
+    from { opacity: 0; transform: scale(0.92) translateY(14px); }
     to   { opacity: 1; transform: scale(1)    translateY(0); }
+  }
+  @keyframes modal-scale-out {
+    from { opacity: 1; transform: scale(1)    translateY(0); }
+    to   { opacity: 0; transform: scale(0.94) translateY(10px); }
   }
 
   #ft-overlay {
@@ -55,9 +58,8 @@
     position: fixed;
     inset: 0;
     background: rgba(10, 22, 13, 0.72);
-    /* Reduced blur (3px instead of 5px) — cheaper to composite each frame */
-    backdrop-filter: blur(3px);
-    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     z-index: 1000;
     align-items: center;
     justify-content: center;
@@ -65,11 +67,18 @@
   }
   #ft-overlay.show {
     display: flex;
-    animation: overlay-fade-in 0.18s ease both;
+    animation: overlay-fade-in 0.28s cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+  #ft-overlay.closing {
+    display: flex;
+    animation: overlay-fade-out 0.22s cubic-bezier(0.4, 0, 0.2, 1) both;
   }
   #ft-overlay.show #ft-modal {
-    /* cubic-bezier(0.16,1,0.3,1) = smooth fast-out, no bounce */
-    animation: modal-scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: modal-scale-in 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+    will-change: transform, opacity;
+  }
+  #ft-overlay.closing #ft-modal {
+    animation: modal-scale-out 0.2s cubic-bezier(0.4, 0, 0.2, 1) both;
     will-change: transform, opacity;
   }
 
