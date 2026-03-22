@@ -195,6 +195,22 @@ const treeJson = JSON.stringify(tree);
   <div class="ft-mobile" id="ftMobile" aria-label="Paparan mudah alih">
     <div class="ft-mobile-content" id="ftMobContent"></div>
   </div>
+
+  <!-- Mobile floating search button -->
+  <button id="ftSearchFab" class="ft-search-fab" aria-label="Cari ahli keluarga">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+  </button>
+
+  <!-- Mobile search overlay -->
+  <div id="ftSearchOverlay" class="ft-search-overlay" aria-hidden="true">
+    <div class="ft-search-overlay-box">
+      <div class="ft-search-overlay-bar">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:#8a6030;flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="ftSearchMob" placeholder="Cari nama ahli keluarga..." autocomplete="off" spellcheck="false" />
+        <button id="ftSearchMobClose" class="ft-search-clear" aria-label="Tutup">&#x2715;</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script define:vars={{ peopleJson, genLabelsJson, treeJson }}>
@@ -665,8 +681,12 @@ const treeJson = JSON.stringify(tree);
     });
 
     // ── Search ───────────────────────────────────────────────────────────
-    const searchInput = document.getElementById('ftSearch');
-    const searchClear = document.getElementById('ftSearchClear');
+    const searchInput   = document.getElementById('ftSearch');
+    const searchClear   = document.getElementById('ftSearchClear');
+    const searchFab     = document.getElementById('ftSearchFab');
+    const searchOverlay = document.getElementById('ftSearchOverlay');
+    const searchMobInput = document.getElementById('ftSearchMob');
+    const searchMobClose = document.getElementById('ftSearchMobClose');
 
     function normalizeStr(s) {
       return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -674,6 +694,8 @@ const treeJson = JSON.stringify(tree);
 
     function resetSearch() {
       document.querySelectorAll('.mob-card').forEach(function (c) { c.style.display = ''; });
+      document.querySelectorAll('.mob-couple-row').forEach(function (r) { r.style.display = ''; });
+      document.querySelectorAll('.mob-couple-conn').forEach(function (c) { c.style.display = ''; });
       document.querySelectorAll('.mob-parent-group').forEach(function (g) { g.style.display = ''; });
       document.querySelectorAll('.mob-gen-section').forEach(function (s) { s.style.display = ''; });
       document.querySelectorAll('.ft-person').forEach(function (p) {
@@ -681,13 +703,11 @@ const treeJson = JSON.stringify(tree);
       });
     }
 
-    searchInput.addEventListener('input', function () {
-      const query = normalizeStr(this.value.trim());
+    function doSearch(query) {
       searchClear.hidden = !query;
-
       if (!query) { resetSearch(); return; }
 
-      // Mobile: filter cards
+      // Mobile: filter individual cards
       document.querySelectorAll('.mob-card').forEach(function (card) {
         const p = PEOPLE[card.dataset.id];
         const match = p && (
@@ -697,9 +717,24 @@ const treeJson = JSON.stringify(tree);
         card.style.display = match ? '' : 'none';
       });
 
+      // Fix couple-rows: hide entire row if both hidden; hide connector if one hidden
+      document.querySelectorAll('.mob-couple-row').forEach(function (row) {
+        const cards = Array.from(row.querySelectorAll('.mob-card'));
+        const visibleCount = cards.filter(function (c) { return c.style.display !== 'none'; }).length;
+        if (visibleCount === 0) {
+          row.style.display = 'none';
+        } else {
+          row.style.display = '';
+          const conn = row.querySelector('.mob-couple-conn');
+          if (conn) conn.style.display = visibleCount === cards.length ? '' : 'none';
+        }
+      });
+
       // Auto-open parent groups that have visible cards
       document.querySelectorAll('.mob-parent-group').forEach(function (group) {
-        const hasVisible = Array.from(group.querySelectorAll('.mob-card')).some(function (c) { return c.style.display !== 'none'; });
+        const hasVisible = Array.from(group.querySelectorAll('.mob-card, .mob-couple-row')).some(function (el) {
+          return el.style.display !== 'none';
+        });
         group.style.display = hasVisible ? '' : 'none';
         if (hasVisible) {
           group.classList.add('open');
@@ -727,7 +762,6 @@ const treeJson = JSON.stringify(tree);
         );
         el.classList.toggle('ft-search-highlight', match);
         el.classList.toggle('ft-search-dim', !match);
-        // Auto-expand branch if a match is inside
         if (match) {
           const body = el.closest('.ft-branch-body');
           if (body && !body.classList.contains('open')) {
@@ -740,12 +774,40 @@ const treeJson = JSON.stringify(tree);
           }
         }
       });
-    });
+    }
 
+    // Desktop search input
+    searchInput.addEventListener('input', function () {
+      doSearch(normalizeStr(this.value.trim()));
+    });
     searchClear.addEventListener('click', function () {
       searchInput.value = '';
-      searchInput.dispatchEvent(new Event('input'));
+      doSearch('');
       searchInput.focus();
+    });
+
+    // Mobile FAB → open overlay
+    searchFab.addEventListener('click', function () {
+      searchOverlay.classList.add('open');
+      searchOverlay.setAttribute('aria-hidden', 'false');
+      setTimeout(function () { searchMobInput.focus(); }, 100);
+    });
+
+    // Mobile overlay: close
+    function closeMobOverlay() {
+      searchOverlay.classList.remove('open');
+      searchOverlay.setAttribute('aria-hidden', 'true');
+    }
+    searchMobClose.addEventListener('click', function () {
+      closeMobOverlay();
+    });
+    searchOverlay.addEventListener('click', function (e) {
+      if (e.target === searchOverlay) closeMobOverlay();
+    });
+
+    // Mobile search input
+    searchMobInput.addEventListener('input', function () {
+      doSearch(normalizeStr(this.value.trim()));
     });
 
     // Drag-to-scroll on the tree wrapper
@@ -1126,41 +1188,80 @@ const treeJson = JSON.stringify(tree);
   .legend-circle.patriarch-circle { background: var(--hijau); border-color: var(--emas2); }
   .legend-circle.deceased-circle  { filter: grayscale(0.6); border-style: dashed; border-color: var(--text3); }
 
-  /* ── SEARCH BAR ── */
+  /* ── SEARCH BAR (desktop) ── */
   .ft-search-wrap {
     position: relative; z-index: 2;
-    padding: 12px 20px 10px;
+    padding: 16px 28px 14px;
     background: var(--cream);
     border-bottom: 1px solid rgba(201,146,42,0.15);
   }
   .ft-search-inner {
     display: flex; align-items: center;
-    max-width: 440px; margin: 0 auto;
+    max-width: 600px; margin: 0 auto;
     background: #fff;
-    border: 1.5px solid rgba(201,146,42,0.3);
-    border-radius: 30px;
-    padding: 0 14px; gap: 10px;
+    border: 2px solid rgba(201,146,42,0.3);
+    border-radius: 40px;
+    padding: 0 20px; gap: 12px;
     transition: border-color 0.2s, box-shadow 0.2s;
   }
   .ft-search-inner:focus-within {
     border-color: var(--emas);
-    box-shadow: 0 0 0 3px rgba(201,146,42,0.12);
+    box-shadow: 0 0 0 4px rgba(201,146,42,0.12);
   }
   #ftSearch {
     flex: 1; border: none; outline: none;
     background: transparent;
-    font-size: 13px; color: var(--text1);
-    padding: 10px 0;
+    font-size: 15px; color: var(--text1);
+    padding: 14px 0;
     font-family: 'Lato', sans-serif;
   }
   #ftSearch::placeholder { color: var(--text3); }
   .ft-search-clear {
     background: none; border: none; cursor: pointer;
-    color: var(--text3); font-size: 12px; padding: 4px 6px;
+    color: var(--text3); font-size: 13px; padding: 4px 7px;
     border-radius: 50%; transition: color 0.15s, background 0.15s;
     line-height: 1;
   }
   .ft-search-clear:hover { color: var(--text1); background: rgba(0,0,0,0.06); }
+
+  /* ── MOBILE SEARCH FAB ── */
+  .ft-search-fab { display: none; }
+  .ft-search-overlay { display: none; }
+
+  /* ── MOBILE SEARCH OVERLAY ── */
+  .ft-search-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding-top: 60px;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .ft-search-overlay.open {
+    opacity: 1; pointer-events: all;
+  }
+  .ft-search-overlay-box {
+    width: calc(100% - 40px); max-width: 420px;
+    animation: ft-fade-up 0.28s cubic-bezier(0.22,1,0.36,1) both;
+  }
+  .ft-search-overlay-bar {
+    display: flex; align-items: center; gap: 10px;
+    background: #fff;
+    border: 2px solid var(--emas);
+    border-radius: 30px;
+    padding: 0 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  }
+  #ftSearchMob {
+    flex: 1; border: none; outline: none;
+    background: transparent;
+    font-size: 15px; color: var(--text1);
+    padding: 14px 0;
+    font-family: 'Lato', sans-serif;
+  }
+  #ftSearchMob::placeholder { color: var(--text3); }
 
   /* Desktop person highlight/dim */
   .ft-person.ft-search-highlight .ft-avatar-frame {
@@ -1213,13 +1314,33 @@ const treeJson = JSON.stringify(tree);
   .ft-mobile { display: none; }
 
   @media (max-width: 768px) {
-    /* Remove the 100vh min-height so body shrinks to content height */
     html, body { min-height: 0 !important; background: #fdf7ec; }
-    /* Prevent #ft from stretching beyond its accordion content */
     #ft { min-height: 0; height: auto; overflow: visible; }
-    .ft-tree-wrap { display: none !important; }
-    .ft-legend    { display: none !important; }
-    .ft-mobile    { display: block; }
+    .ft-tree-wrap  { display: none !important; }
+    .ft-legend     { display: none !important; }
+    .ft-mobile     { display: block; }
+    .ft-search-wrap { display: none !important; }
+
+    /* Floating search button */
+    .ft-search-fab {
+      display: flex; align-items: center; justify-content: center;
+      position: fixed; bottom: 24px; right: 20px; z-index: 100;
+      width: 52px; height: 52px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--hijau2), var(--hijau));
+      border: 2px solid var(--emas);
+      color: var(--emas2);
+      box-shadow: 0 4px 18px rgba(23,61,40,0.35), 0 1px 4px rgba(23,61,40,0.2);
+      cursor: pointer;
+      transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .ft-search-fab:active {
+      transform: scale(0.92);
+      box-shadow: 0 2px 8px rgba(23,61,40,0.25);
+    }
+
+    /* Mobile search overlay */
+    .ft-search-overlay { display: flex; }
   }
 
   .ft-mobile-content {
