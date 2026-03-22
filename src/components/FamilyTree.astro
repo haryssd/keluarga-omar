@@ -53,10 +53,8 @@ function renderCouple(ids: string[], isPatriarch: boolean): string {
     </div>`;
 }
 
-function renderFamily(node: TreeNode, isRoot: boolean): string {
+function renderFamily(node: TreeNode, isRoot: boolean, depth: number = 0): string {
   const childCount = node.children.length;
-  // If ANY child has a marriage note, give ALL siblings a fixed-height
-  // note slot so their couple cards start at the exact same vertical position.
   const anyChildHasNote = node.children.some(c => c.note);
 
   const childrenHtml = node.children
@@ -69,20 +67,38 @@ function renderFamily(node: TreeNode, isRoot: boolean): string {
       return `
         <div class="ft-child-col">
           ${noteSlot}
-          ${renderFamily(child, false)}
+          ${renderFamily(child, false, depth + 1)}
         </div>`;
     })
     .join('');
 
+  let childrenSection = '';
+  if (childCount > 0) {
+    const connHtml = `
+      <div class="ft-connector${anyChildHasNote ? ' ft-connector--with-notes' : ''}" aria-hidden="true">
+        <div class="v-line v-short"></div>
+      </div>`;
+    const childrenWrap = `<div class="ft-children${anyChildHasNote ? ' ft-children--with-notes' : ''}">${childrenHtml}</div>`;
+
+    if (depth === 1) {
+      // Gen 2 couples: their children start collapsed
+      childrenSection = `
+        ${connHtml}
+        <button class="ft-branch-toggle" aria-expanded="false">
+          <svg width="9" height="9" viewBox="0 0 9 9" aria-hidden="true"><rect x="0.5" y="3.5" width="8" height="2" fill="currentColor" rx="1"/><rect x="3.5" y="0.5" width="2" height="8" fill="currentColor" rx="1"/></svg>
+          <span class="ft-branch-label">Anak-anak</span>
+          <span class="ft-branch-count">${childCount}</span>
+        </button>
+        <div class="ft-branch-body">${childrenWrap}</div>`;
+    } else {
+      childrenSection = `${connHtml}${childrenWrap}`;
+    }
+  }
+
   return `
     <div class="ft-gen-group">
       ${renderCouple(node.couple, isRoot)}
-      ${childCount > 0 ? `
-        <div class="ft-connector${anyChildHasNote ? ' ft-connector--with-notes' : ''}" aria-hidden="true">
-          <div class="v-line v-short"></div>
-        </div>
-        <div class="ft-children${anyChildHasNote ? ' ft-children--with-notes' : ''}">${childrenHtml}</div>
-      ` : ''}
+      ${childrenSection}
     </div>`;
 }
 
@@ -141,6 +157,15 @@ const treeJson = JSON.stringify(tree);
     </div>
     <div class="head-bottom-stripe" aria-hidden="true"></div>
   </header>
+
+  <!-- Search bar -->
+  <div class="ft-search-wrap" id="ftSearchWrap">
+    <div class="ft-search-inner">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:#8a6030;flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="ftSearch" placeholder="Cari nama ahli keluarga..." autocomplete="off" spellcheck="false" />
+      <button id="ftSearchClear" class="ft-search-clear" aria-label="Padam carian" hidden>&#x2715;</button>
+    </div>
+  </div>
 
   <!-- Tree scroll area -->
   <div class="ft-tree-wrap" id="treeWrap">
@@ -627,6 +652,102 @@ const treeJson = JSON.stringify(tree);
 
     renderMobAll();
 
+    // ── Desktop branch toggle (Gen 3+ expand/collapse) ──────────────────
+    document.querySelectorAll('.ft-branch-toggle').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const group = btn.closest('.ft-gen-group');
+        const body = group.querySelector('.ft-branch-body');
+        const isExpanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!isExpanded));
+        body.classList.toggle('open', !isExpanded);
+        btn.classList.toggle('open', !isExpanded);
+      });
+    });
+
+    // ── Search ───────────────────────────────────────────────────────────
+    const searchInput = document.getElementById('ftSearch');
+    const searchClear = document.getElementById('ftSearchClear');
+
+    function normalizeStr(s) {
+      return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
+    function resetSearch() {
+      document.querySelectorAll('.mob-card').forEach(function (c) { c.style.display = ''; });
+      document.querySelectorAll('.mob-parent-group').forEach(function (g) { g.style.display = ''; });
+      document.querySelectorAll('.mob-gen-section').forEach(function (s) { s.style.display = ''; });
+      document.querySelectorAll('.ft-person').forEach(function (p) {
+        p.classList.remove('ft-search-highlight', 'ft-search-dim');
+      });
+    }
+
+    searchInput.addEventListener('input', function () {
+      const query = normalizeStr(this.value.trim());
+      searchClear.hidden = !query;
+
+      if (!query) { resetSearch(); return; }
+
+      // Mobile: filter cards
+      document.querySelectorAll('.mob-card').forEach(function (card) {
+        const p = PEOPLE[card.dataset.id];
+        const match = p && (
+          normalizeStr(p.name).includes(query) ||
+          (p.nickname && normalizeStr(p.nickname).includes(query))
+        );
+        card.style.display = match ? '' : 'none';
+      });
+
+      // Auto-open parent groups that have visible cards
+      document.querySelectorAll('.mob-parent-group').forEach(function (group) {
+        const hasVisible = Array.from(group.querySelectorAll('.mob-card')).some(function (c) { return c.style.display !== 'none'; });
+        group.style.display = hasVisible ? '' : 'none';
+        if (hasVisible) {
+          group.classList.add('open');
+          const btn = group.querySelector('button.mob-parent-header');
+          if (btn) btn.setAttribute('aria-expanded', 'true');
+        }
+      });
+
+      // Auto-open gen sections that have visible cards
+      document.querySelectorAll('.mob-gen-section').forEach(function (section) {
+        const hasVisible = Array.from(section.querySelectorAll('.mob-card')).some(function (c) { return c.style.display !== 'none'; });
+        section.style.display = hasVisible ? '' : 'none';
+        if (hasVisible) {
+          section.classList.add('open');
+          section.querySelector('.mob-gen-header').setAttribute('aria-expanded', 'true');
+        }
+      });
+
+      // Desktop: highlight/dim matching people
+      document.querySelectorAll('.ft-person').forEach(function (el) {
+        const p = PEOPLE[el.dataset.id];
+        const match = p && (
+          normalizeStr(p.name).includes(query) ||
+          (p.nickname && normalizeStr(p.nickname).includes(query))
+        );
+        el.classList.toggle('ft-search-highlight', match);
+        el.classList.toggle('ft-search-dim', !match);
+        // Auto-expand branch if a match is inside
+        if (match) {
+          const body = el.closest('.ft-branch-body');
+          if (body && !body.classList.contains('open')) {
+            body.classList.add('open');
+            const toggle = body.previousElementSibling;
+            if (toggle && toggle.classList.contains('ft-branch-toggle')) {
+              toggle.setAttribute('aria-expanded', 'true');
+              toggle.classList.add('open');
+            }
+          }
+        }
+      });
+    });
+
+    searchClear.addEventListener('click', function () {
+      searchInput.value = '';
+      searchInput.dispatchEvent(new Event('input'));
+      searchInput.focus();
+    });
+
     // Drag-to-scroll on the tree wrapper
     const wrap = document.getElementById('treeWrap');
     let isDragging = false, startX = 0, scrollLeft = 0;
@@ -1004,6 +1125,89 @@ const treeJson = JSON.stringify(tree);
   }
   .legend-circle.patriarch-circle { background: var(--hijau); border-color: var(--emas2); }
   .legend-circle.deceased-circle  { filter: grayscale(0.6); border-style: dashed; border-color: var(--text3); }
+
+  /* ── SEARCH BAR ── */
+  .ft-search-wrap {
+    position: relative; z-index: 2;
+    padding: 12px 20px 10px;
+    background: var(--cream);
+    border-bottom: 1px solid rgba(201,146,42,0.15);
+  }
+  .ft-search-inner {
+    display: flex; align-items: center;
+    max-width: 440px; margin: 0 auto;
+    background: #fff;
+    border: 1.5px solid rgba(201,146,42,0.3);
+    border-radius: 30px;
+    padding: 0 14px; gap: 10px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .ft-search-inner:focus-within {
+    border-color: var(--emas);
+    box-shadow: 0 0 0 3px rgba(201,146,42,0.12);
+  }
+  #ftSearch {
+    flex: 1; border: none; outline: none;
+    background: transparent;
+    font-size: 13px; color: var(--text1);
+    padding: 10px 0;
+    font-family: 'Lato', sans-serif;
+  }
+  #ftSearch::placeholder { color: var(--text3); }
+  .ft-search-clear {
+    background: none; border: none; cursor: pointer;
+    color: var(--text3); font-size: 12px; padding: 4px 6px;
+    border-radius: 50%; transition: color 0.15s, background 0.15s;
+    line-height: 1;
+  }
+  .ft-search-clear:hover { color: var(--text1); background: rgba(0,0,0,0.06); }
+
+  /* Desktop person highlight/dim */
+  .ft-person.ft-search-highlight .ft-avatar-frame {
+    border-color: var(--emas2);
+    box-shadow: 0 0 0 5px rgba(232,196,106,0.35);
+  }
+  .ft-person.ft-search-highlight .ft-name { color: var(--emas); font-weight: 700; }
+  .ft-person.ft-search-dim { opacity: 0.18; transition: opacity 0.2s; }
+
+  /* ── BRANCH TOGGLE (Gen 3+ expand) ── */
+  .ft-branch-toggle {
+    display: flex; align-items: center; gap: 6px;
+    margin-top: 8px;
+    padding: 5px 14px;
+    background: rgba(201,146,42,0.08);
+    border: 1.5px solid rgba(201,146,42,0.3);
+    border-radius: 20px;
+    font-size: 11px; font-weight: 600;
+    color: var(--hijau); font-family: 'Lato', sans-serif;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, transform 0.18s;
+    white-space: nowrap;
+  }
+  .ft-branch-toggle:hover {
+    background: rgba(201,146,42,0.15);
+    border-color: var(--emas);
+    transform: translateY(-1px);
+  }
+  .ft-branch-toggle.open {
+    background: rgba(23,61,40,0.07);
+    border-color: rgba(23,61,40,0.22);
+  }
+  .ft-branch-toggle.open svg rect { fill: var(--hijau2); }
+  .ft-branch-toggle svg { flex-shrink: 0; transition: transform 0.25s; }
+  .ft-branch-toggle.open svg { transform: rotate(45deg); }
+  .ft-branch-count {
+    background: var(--emas); color: #fff;
+    border-radius: 10px; padding: 1px 7px;
+    font-size: 10px; font-weight: 700;
+  }
+  .ft-branch-body {
+    display: none;
+  }
+  .ft-branch-body.open {
+    display: block;
+    animation: ft-fade-up 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
 
   /* ── MOBILE VIEW — Collapsible Accordion ── */
   .ft-mobile { display: none; }
