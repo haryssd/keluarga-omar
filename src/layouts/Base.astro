@@ -75,13 +75,14 @@ const { title = "Keluarga Omar", description = "Pokok Keluarga Omar — 4 Genera
       align-items: center;
       justify-content: center;
       flex-direction: column;
-      animation: splash-fade-out 0.6s ease forwards;
-      animation-delay: 6s;
+      animation: splash-fade-out 1.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      animation-delay: 9s;
       pointer-events: none;
     }
     @keyframes splash-fade-out {
-      from { opacity: 1; }
-      to   { opacity: 0; visibility: hidden; }
+      0%   { opacity: 1; transform: scale(1); }
+      60%  { opacity: 0.4; transform: scale(1.015); }
+      100% { opacity: 0; transform: scale(1.03); visibility: hidden; }
     }
     .splash-inner {
       display: flex;
