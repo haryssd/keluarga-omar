@@ -983,8 +983,11 @@ const treeJson = JSON.stringify(tree);
     left: 0; right: 0;
     height: 26px;
     display: flex; align-items: center; justify-content: center;
-    background: #fdf7ec; /* masks the vertical line behind the badge */
+    background: transparent; /* only mask when badge is present */
     z-index: 1;
+  }
+  .ft-note-slot:not(:empty) {
+    background: #fdf7ec; /* masks the vertical line behind the badge */
   }
   .ft-marriage-note-inner {
     font-size: 9px; font-weight: 700;
