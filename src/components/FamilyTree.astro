@@ -6,7 +6,7 @@ export interface Props {
 }
 
 const { data } = Astro.props;
-const { people, tree, familyName, subtitle } = data;
+const { people, tree, familyName, subtitle, updatedAt } = data;
 
 const GEN_LABELS: Record<number, string> = {
   1: 'Generasi 1 — Datuk & Nenek',
@@ -189,11 +189,15 @@ const treeJson = JSON.stringify(tree);
     <div class="legend-item hint">
       <span>Klik untuk butiran &nbsp;·&nbsp; Scroll untuk lebih</span>
     </div>
+    <div class="legend-item hint">
+      <span>Dikemaskini: <strong>{updatedAt}</strong></span>
+    </div>
   </footer>
 
   <!-- Mobile: Vertical Scroll / Family Album -->
   <div class="ft-mobile" id="ftMobile" aria-label="Paparan mudah alih">
     <div class="ft-mobile-content" id="ftMobContent"></div>
+    <div class="mob-updated">Dikemaskini: <strong>{updatedAt}</strong></div>
   </div>
 
   <!-- Mobile floating search button -->
@@ -1609,6 +1613,15 @@ const treeJson = JSON.stringify(tree);
     border-color: rgba(23,61,40,0.12);
   }
   .mob-parent-header--static .mob-parent-name strong { color: var(--hijau2); }
+
+  /* ── Updated at (mobile) ── */
+  .mob-updated {
+    text-align: center;
+    font-size: 10px; color: var(--text3);
+    padding: 10px 16px 80px; /* bottom padding clears the FAB */
+    letter-spacing: 0.04em;
+  }
+  .mob-updated strong { color: var(--text2); font-weight: 600; }
 
   /* ── Couple row ── */
   .mob-couple-row {

@@ -18,6 +18,7 @@ export interface TreeNode {
 export interface FamilyData {
   familyName: string;
   subtitle:   string;
+  updatedAt:  string;
   tree:       TreeNode;
   people:     Record<string, Person>;
 }
