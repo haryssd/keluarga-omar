@@ -160,6 +160,18 @@ const treeJson = JSON.stringify(tree);
     <div class="head-bottom-stripe" aria-hidden="true"></div>
   </header>
 
+  <!-- Desktop view toggle tabs -->
+  <div class="ft-view-tabs" id="ftViewTabs">
+    <button class="ft-tab ft-tab--active" id="ftTabSlide" data-view="slide">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      Susur Galur
+    </button>
+    <button class="ft-tab" id="ftTabTree" data-view="tree">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M12 7v4M12 11l-5 6M12 11l5 6"/></svg>
+      Pokok Keluarga
+    </button>
+  </div>
+
   <!-- Search bar -->
   <div class="ft-search-wrap" id="ftSearchWrap">
     <div class="ft-search-inner">
@@ -172,6 +184,23 @@ const treeJson = JSON.stringify(tree);
   <!-- Tree scroll area -->
   <div class="ft-tree-wrap" id="treeWrap">
     <div class="ft-tree" id="ftTree" set:html={treeHtml}></div>
+    <div class="ft-zoom-controls" id="ftZoomControls">
+      <button class="ft-zoom-btn" id="ftZoomIn" aria-label="Zum masuk">+</button>
+      <button class="ft-zoom-btn ft-zoom-reset" id="ftZoomReset" aria-label="Set semula">⌂</button>
+      <button class="ft-zoom-btn" id="ftZoomOut" aria-label="Zum keluar">−</button>
+    </div>
+  </div>
+
+  <!-- Desktop Slide View -->
+  <div class="ft-slide-view" id="ftSlideView">
+    <div class="ft-slide-topbar">
+      <button class="ft-slide-back" id="ftSlideBack" hidden>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+        Kembali
+      </button>
+      <nav class="ft-slide-breadcrumb" id="ftSlideBreadcrumb" aria-label="Navigasi pokok keluarga"></nav>
+    </div>
+    <div class="ft-slide-stage" id="ftSlideStage"></div>
   </div>
 
   <!-- Legend -->
@@ -816,9 +845,58 @@ const treeJson = JSON.stringify(tree);
       doSearch(normalizeStr(this.value.trim()));
     });
 
+    // ── View tab toggle (desktop only) ─────────────────────────────────
+    var tabSlide = document.getElementById('ftTabSlide');
+    var tabTree  = document.getElementById('ftTabTree');
+    var slideView = document.getElementById('ftSlideView');
+    var treeView  = document.getElementById('treeWrap');
+    var searchWrap = document.getElementById('ftSearchWrap');
+
+    function switchView(view) {
+      if (view === 'slide') {
+        slideView.style.display = 'flex';
+        treeView.style.display  = 'none';
+        searchWrap.style.display = 'none';
+        tabSlide.classList.add('ft-tab--active');
+        tabTree.classList.remove('ft-tab--active');
+      } else {
+        slideView.style.display = 'none';
+        treeView.style.display  = 'block';
+        searchWrap.style.display = 'block';
+        tabTree.classList.add('ft-tab--active');
+        tabSlide.classList.remove('ft-tab--active');
+      }
+    }
+    if (tabSlide) tabSlide.addEventListener('click', function () { switchView('slide'); });
+    if (tabTree)  tabTree.addEventListener('click',  function () { switchView('tree'); });
+
+    // ── Pan & Zoom canvas for tree view ─────────────────────────────────
+    var wrap = document.getElementById('treeWrap');
+    var ftTree = document.getElementById('ftTree');
+    var currentZoom = 1.15; // matches the CSS zoom default
+    var minZoom = 0.4, maxZoom = 2.2;
+
+    function applyZoom(z) {
+      currentZoom = Math.min(maxZoom, Math.max(minZoom, z));
+      ftTree.style.zoom = currentZoom;
+    }
+
+    var zoomIn    = document.getElementById('ftZoomIn');
+    var zoomOut   = document.getElementById('ftZoomOut');
+    var zoomReset = document.getElementById('ftZoomReset');
+    if (zoomIn)    zoomIn.addEventListener('click',    function () { applyZoom(currentZoom + 0.15); });
+    if (zoomOut)   zoomOut.addEventListener('click',   function () { applyZoom(currentZoom - 0.15); });
+    if (zoomReset) zoomReset.addEventListener('click', function () { applyZoom(1.15); });
+
+    // Mouse wheel zoom on tree
+    wrap.addEventListener('wheel', function (e) {
+      if (!e.ctrlKey && !e.metaKey) return; // only zoom with Ctrl+scroll
+      e.preventDefault();
+      applyZoom(currentZoom - e.deltaY * 0.001);
+    }, { passive: false });
+
     // Drag-to-scroll on the tree wrapper
-    const wrap = document.getElementById('treeWrap');
-    let isDragging = false, startX = 0, scrollLeft = 0;
+    var isDragging = false, startX = 0, scrollLeft = 0;
     wrap.addEventListener('mousedown', function (e) {
       isDragging = true;
       startX = e.pageX - wrap.offsetLeft;
@@ -832,6 +910,235 @@ const treeJson = JSON.stringify(tree);
       e.preventDefault();
       wrap.scrollLeft = scrollLeft - (e.pageX - wrap.offsetLeft - startX) * 1.2;
     });
+
+    // ── DESKTOP SLIDE VIEW ──────────────────────────────────────────────────
+    var slideStage   = document.getElementById('ftSlideStage');
+    var slideBackBtn = document.getElementById('ftSlideBack');
+    var slideBcEl    = document.getElementById('ftSlideBreadcrumb');
+
+    if (slideStage) {
+      var slideNavStack = [{ node: TREE, label: slideFirstNameCouple(TREE.couple) }];
+
+      function slideFirstNameCouple(ids) {
+        return ids.map(function(id) {
+          return PEOPLE[id] ? PEOPLE[id].name.split(' ')[0] : '';
+        }).filter(Boolean).join(' & ');
+      }
+
+      function slideFindNode(root, coupleKey) {
+        if (root.couple.join('|') === coupleKey) return root;
+        for (var i = 0; i < root.children.length; i++) {
+          var found = slideFindNode(root.children[i], coupleKey);
+          if (found) return found;
+        }
+        return null;
+      }
+
+      function slideUpdateBreadcrumb() {
+        slideBcEl.innerHTML = slideNavStack.map(function(item, i) {
+          var isLast = i === slideNavStack.length - 1;
+          if (isLast) return '<span class="ft-bc-current">' + item.label + '</span>';
+          return '<button class="ft-bc-btn" data-idx="' + i + '">' + item.label + '</button><span class="ft-bc-sep">›</span>';
+        }).join('');
+        slideBcEl.querySelectorAll('.ft-bc-btn').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var idx = parseInt(btn.dataset.idx);
+            slideNavStack = slideNavStack.slice(0, idx + 1);
+            slideDoRender('back');
+            slideUpdateBreadcrumb();
+            slideBackBtn.hidden = slideNavStack.length <= 1;
+          });
+        });
+      }
+
+      function slideNavigateTo(childNode) {
+        slideNavStack.push({ node: childNode, label: slideFirstNameCouple(childNode.couple) });
+        slideDoRender('forward');
+        slideUpdateBreadcrumb();
+        slideBackBtn.hidden = false;
+        document.getElementById('ftSlideView').scrollTop = 0;
+      }
+
+      function slideNavigateBack() {
+        if (slideNavStack.length > 1) {
+          slideNavStack.pop();
+          slideDoRender('back');
+          slideUpdateBreadcrumb();
+          slideBackBtn.hidden = slideNavStack.length <= 1;
+        }
+      }
+
+      function slideDoRender(direction) {
+        var node = slideNavStack[slideNavStack.length - 1].node;
+        var html = slideBuildHTML(node);
+        var newSlide = document.createElement('div');
+        newSlide.className = 'ft-slide';
+        newSlide.innerHTML = html;
+
+        var oldSlide = slideStage.querySelector('.ft-slide');
+
+        if (!oldSlide) {
+          slideStage.appendChild(newSlide);
+        } else {
+          newSlide.classList.add(direction === 'forward' ? 'ft-slide--from-right' : 'ft-slide--from-left');
+          slideStage.appendChild(newSlide);
+          newSlide.offsetWidth; // force reflow
+          newSlide.classList.remove('ft-slide--from-right', 'ft-slide--from-left');
+          oldSlide.classList.add(direction === 'forward' ? 'ft-slide--to-left' : 'ft-slide--to-right');
+          oldSlide.addEventListener('transitionend', function() { if (oldSlide.parentNode) oldSlide.remove(); }, { once: true });
+        }
+
+        slideWire(newSlide);
+      }
+
+      function slideGenLabel(gen) {
+        return ({ 1: 'Generasi Pertama', 2: 'Generasi Ke-2', 3: 'Generasi Ke-3', 4: 'Generasi Ke-4' })[gen] || ('Generasi Ke-' + gen);
+      }
+
+      function slideBuildHTML(node) {
+        var ids = node.couple;
+        var p0 = PEOPLE[ids[0]];
+        var isRoot = slideNavStack.length === 1;
+        var gen = p0 ? p0.generation : 1;
+
+        var coupleHtml = '';
+        if (ids.length === 1) {
+          coupleHtml = slideMainPerson(ids[0], isRoot);
+        } else {
+          coupleHtml = '<div class="fts-couple">' +
+            slideMainPerson(ids[0], isRoot) +
+            '<div class="fts-conn"><div class="fts-conn-line"></div><div class="fts-diamond"></div><div class="fts-conn-line"></div></div>' +
+            slideMainPerson(ids[1], isRoot) +
+            '</div>';
+        }
+
+        var childrenHtml = '';
+        if (node.children.length > 0) {
+          var childCards = node.children.map(function(child, idx) { return slideChildCard(child, idx, node.children.length); }).join('');
+          childrenHtml =
+            '<div class="fts-children-section">' +
+              '<div class="fts-children-header">' +
+                '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M12 7v4M12 11l-5 6M12 11l5 6"/></svg>' +
+                '<span>Anak-anak</span>' +
+                '<span class="fts-children-count">' + node.children.length + '</span>' +
+              '</div>' +
+              '<div class="fts-children-grid">' + childCards + '</div>' +
+            '</div>';
+        }
+
+        return '<div class="fts-gen-badge">' + slideGenLabel(gen) + '</div>' +
+          '<div class="fts-couple-section">' + coupleHtml + '</div>' +
+          childrenHtml;
+      }
+
+      function slideMainPerson(id, isRoot) {
+        var p = PEOPLE[id];
+        if (!p) return '';
+        var avCls = 'fts-main-avatar' + (isRoot ? ' patriarch' : '') + (p.deceased ? ' deceased' : '');
+        var photoEl = p.photo
+          ? '<img src="' + p.photo + '" alt="' + p.name + '" loading="lazy" />'
+          : '<span class="fts-main-initials">' + p.initials + '</span>';
+        var nick = p.nickname ? '<div class="fts-main-nick">' + p.nickname + '</div>' : '';
+        var fati = p.deceased ? '<div class="fts-main-fatihah">Al-Fatihah</div>' : '';
+        return '<div class="fts-main-person" data-id="' + id + '" role="button" tabindex="0" aria-label="' + p.name + '">' +
+          '<div class="fts-main-avatar-wrap' + (p.deceased ? ' deceased' : '') + '">' +
+            '<div class="' + avCls + '">' + photoEl + '</div>' +
+          '</div>' +
+          '<div class="fts-main-name">' + p.name + '</div>' +
+          nick + fati +
+        '</div>';
+      }
+
+      function slideChildCard(childNode, idx, total) {
+        var ids = childNode.couple;
+        var note = childNode.note || '';
+        var hasChildren = childNode.children.length > 0;
+        var orderLabel = '';
+        if (total > 1) {
+          if (idx === 0) orderLabel = 'Anak Sulung';
+          else if (idx === total - 1) orderLabel = 'Anak Bongsu';
+          else orderLabel = 'Anak Ke-' + (idx + 1);
+        }
+        var orderHtml = orderLabel ? '<div class="fts-card-order">' + orderLabel + '</div>' : '';
+        var noteHtml = note ? '<div class="fts-card-note">' + note + '</div>' : '';
+        var arrowHtml = hasChildren
+          ? '<div class="fts-card-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>'
+          : '';
+        var cardCls = 'fts-child-card' + (hasChildren ? ' has-children' : '') + (ids.length > 1 ? ' is-couple' : '');
+
+        if (ids.length === 1) {
+          return '<div class="' + cardCls + '" data-couple="' + ids.join('|') + '" role="button" tabindex="0">' +
+            noteHtml + orderHtml + slideCardPerson(ids[0]) + arrowHtml + '</div>';
+        }
+
+        return '<div class="' + cardCls + '" data-couple="' + ids.join('|') + '" role="button" tabindex="0">' +
+          noteHtml + orderHtml +
+          '<div class="fts-card-couple-inner">' +
+            slideCardPerson(ids[0]) +
+            '<div class="fts-card-diamond">◆</div>' +
+            slideCardPerson(ids[1]) +
+          '</div>' +
+          arrowHtml + '</div>';
+      }
+
+      function slideCardPerson(id) {
+        var p = PEOPLE[id];
+        if (!p) return '';
+        var avCls = 'fts-card-avatar' + (p.deceased ? ' deceased' : '');
+        var photoEl = p.photo
+          ? '<img src="' + p.photo + '" alt="' + p.name + '" loading="lazy" />'
+          : '<span class="fts-card-initials">' + p.initials + '</span>';
+        var fati = p.deceased ? '<div class="fts-card-fatihah">Al-Fatihah</div>' : '<div class="fts-card-fatihah" style="visibility:hidden">Al-Fatihah</div>';
+        return '<div class="fts-card-person" data-id="' + id + '">' +
+          '<div class="fts-card-avatar-wrap' + (p.deceased ? ' deceased' : '') + '">' +
+            '<div class="' + avCls + '">' + photoEl + '</div>' +
+          '</div>' +
+          '<div class="fts-card-name">' + p.name + '</div>' +
+          fati +
+        '</div>';
+      }
+
+      function slideWire(slide) {
+        slide.querySelectorAll('.fts-main-person').forEach(function(el) {
+          var id = el.dataset.id;
+          el.addEventListener('click', function() { openModal(id); });
+          el.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(id); }
+          });
+        });
+
+        slide.querySelectorAll('.fts-card-person[data-id]').forEach(function(el) {
+          var id = el.dataset.id;
+          el.addEventListener('click', function(e) { e.stopPropagation(); openModal(id); });
+        });
+
+        slide.querySelectorAll('.fts-child-card.has-children').forEach(function(card) {
+          var coupleKey = card.dataset.couple;
+          card.addEventListener('click', function() {
+            var childNode = slideFindNode(TREE, coupleKey);
+            if (childNode) slideNavigateTo(childNode);
+          });
+          card.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              var childNode = slideFindNode(TREE, coupleKey);
+              if (childNode) slideNavigateTo(childNode);
+            }
+          });
+        });
+
+        // Cards without children: click anywhere → modal for first person
+        slide.querySelectorAll('.fts-child-card:not(.has-children)').forEach(function(card) {
+          var coupleKey = card.dataset.couple;
+          var firstId = coupleKey.split('|')[0];
+          card.addEventListener('click', function() { openModal(firstId); });
+        });
+      }
+
+      slideDoRender('none');
+      slideUpdateBreadcrumb();
+      slideBackBtn.addEventListener('click', slideNavigateBack);
+    }
   });
 </script>
 
@@ -1361,6 +1668,281 @@ const treeJson = JSON.stringify(tree);
 
   /* ── MOBILE VIEW — Collapsible Accordion ── */
   .ft-mobile { display: none; }
+
+  /* ── DESKTOP SLIDE VIEW ── */
+  .ft-slide-view {
+    display: none;
+    flex-direction: column;
+    position: relative; z-index: 1;
+    overflow-y: auto;
+  }
+
+  .ft-slide-topbar {
+    display: flex; align-items: center; gap: 16px;
+    padding: 14px 48px 12px;
+    border-bottom: 1px solid rgba(201,146,42,0.18);
+    background: rgba(253,247,236,0.95);
+    backdrop-filter: blur(8px);
+    position: sticky; top: 0; z-index: 10;
+    min-height: 52px;
+  }
+
+  .ft-slide-back {
+    display: flex; align-items: center; gap: 6px;
+    background: none; border: 1.5px solid rgba(201,146,42,0.35);
+    border-radius: 20px; padding: 6px 14px 6px 10px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.05em;
+    color: var(--hijau2); cursor: pointer; font-family: 'Lato', sans-serif;
+    transition: all 0.22s cubic-bezier(0.34,1.56,0.64,1);
+    flex-shrink: 0; white-space: nowrap;
+  }
+  .ft-slide-back:hover {
+    background: rgba(201,146,42,0.1);
+    border-color: var(--emas);
+    transform: translateX(-3px);
+  }
+
+  .ft-slide-breadcrumb {
+    display: flex; align-items: center; gap: 5px;
+    flex-wrap: wrap; flex: 1;
+  }
+  .ft-bc-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: 12px; font-weight: 500; color: var(--text3);
+    font-family: 'Lato', sans-serif;
+    padding: 3px 6px; border-radius: 6px;
+    transition: color 0.15s, background 0.15s;
+  }
+  .ft-bc-btn:hover { color: var(--emas); background: rgba(201,146,42,0.08); }
+  .ft-bc-sep { color: var(--text3); opacity: 0.4; font-size: 13px; }
+  .ft-bc-current { font-size: 12px; font-weight: 700; color: var(--hijau2); padding: 3px 6px; }
+
+  .ft-slide-stage {
+    position: relative; overflow: hidden; min-height: 60vh;
+  }
+
+  .ft-slide {
+    padding: 44px 60px 60px;
+    transition: transform 0.42s cubic-bezier(0.4,0,0.2,1), opacity 0.36s ease;
+  }
+  .ft-slide--from-right { transform: translateX(80px); opacity: 0; }
+  .ft-slide--from-left  { transform: translateX(-80px); opacity: 0; }
+  .ft-slide--to-left {
+    transform: translateX(-80px); opacity: 0;
+    position: absolute; inset: 0; pointer-events: none;
+    transition: transform 0.42s cubic-bezier(0.4,0,0.2,1), opacity 0.36s ease;
+  }
+  .ft-slide--to-right {
+    transform: translateX(80px); opacity: 0;
+    position: absolute; inset: 0; pointer-events: none;
+    transition: transform 0.42s cubic-bezier(0.4,0,0.2,1), opacity 0.36s ease;
+  }
+
+  /* Gen badge */
+  .fts-gen-badge {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--emas);
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    margin-bottom: 36px;
+  }
+  .fts-gen-badge::before, .fts-gen-badge::after {
+    content: ''; flex: 1; max-width: 80px; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(201,146,42,0.5), transparent);
+  }
+
+  /* Main couple */
+  .fts-couple-section { display: flex; justify-content: center; margin-bottom: 52px; }
+  .fts-couple { display: flex; align-items: flex-start; gap: 0; }
+  .fts-conn { display: flex; align-items: center; width: 60px; flex-shrink: 0; margin-top: 55px; }
+  .fts-conn-line { flex: 1; height: 2px; background: linear-gradient(90deg, var(--emas), var(--emas2), var(--emas)); }
+  .fts-diamond {
+    width: 13px; height: 13px; background: var(--emas);
+    transform: rotate(45deg); flex-shrink: 0;
+    border: 2px solid var(--emas2);
+    animation: ft-diamond-pulse 3s ease-in-out infinite;
+  }
+
+  .fts-main-person {
+    display: flex; flex-direction: column; align-items: center;
+    cursor: pointer; padding: 18px 24px; border-radius: 18px;
+    transition: transform 0.28s cubic-bezier(0.34,1.56,0.64,1), background 0.22s, box-shadow 0.22s;
+    outline: none; min-width: 150px;
+  }
+  .fts-main-person:hover {
+    transform: translateY(-8px) scale(1.04);
+    background: rgba(201,146,42,0.07);
+    box-shadow: 0 16px 40px rgba(201,146,42,0.18);
+  }
+  .fts-main-person:focus-visible { outline: 2px solid var(--emas); outline-offset: 3px; }
+
+  .fts-main-avatar-wrap {
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    border: 3px solid var(--emas);
+    background: var(--emas3);
+    overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 6px 24px rgba(201,146,42,0.22);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .fts-main-avatar-wrap.deceased {
+    border-style: dashed; border-color: var(--text3);
+    filter: grayscale(0.5); opacity: 0.82;
+  }
+  .fts-main-person:hover .fts-main-avatar-wrap {
+    border-color: var(--emas2);
+    box-shadow: 0 8px 32px rgba(201,146,42,0.35);
+  }
+  .fts-main-avatar {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--emas3);
+  }
+  .fts-main-avatar.patriarch { background: radial-gradient(circle at 35% 35%, var(--hijau3), var(--hijau)); }
+  .fts-main-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .fts-main-initials { font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 700; color: var(--hijau); }
+  .fts-main-avatar.patriarch .fts-main-initials { color: var(--emas2); }
+  .fts-main-avatar.deceased { filter: grayscale(0.65); opacity: 0.85; }
+
+  .fts-main-name { margin-top: 14px; font-size: 16px; font-weight: 700; color: var(--text1); text-align: center; line-height: 1.3; max-width: 180px; }
+  .fts-main-nick { font-size: 12px; font-style: italic; font-weight: 600; color: var(--emas); margin-top: 5px; }
+  .fts-main-fatihah { font-size: 9px; font-weight: 700; letter-spacing: 0.12em; color: var(--text3); text-transform: uppercase; margin-top: 5px; opacity: 0.7; }
+
+  /* Children section */
+  .fts-children-section { max-width: 1000px; margin: 0 auto; }
+  .fts-children-header {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--hijau2);
+    margin-bottom: 20px; padding-bottom: 12px;
+    border-bottom: 1px solid rgba(201,146,42,0.2);
+  }
+  .fts-children-count {
+    background: var(--emas); color: #fff;
+    border-radius: 10px; padding: 1px 8px;
+    font-size: 10px; letter-spacing: 0; font-weight: 700;
+  }
+  .fts-children-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+  }
+
+  /* Child card */
+  .fts-child-card {
+    background: #fff;
+    border: 1.5px solid rgba(201,146,42,0.18);
+    border-top: 3px solid rgba(201,146,42,0.28);
+    border-radius: 14px; padding: 18px 14px 14px;
+    transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s, border-color 0.2s;
+    display: flex; flex-direction: column; align-items: center;
+    text-align: center; gap: 10px; cursor: default;
+    position: relative;
+  }
+  .fts-child-card.has-children {
+    cursor: pointer; border-top-color: var(--emas);
+  }
+  .fts-child-card.has-children:hover {
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: 0 10px 32px rgba(201,146,42,0.2);
+    border-color: rgba(201,146,42,0.5);
+  }
+  .fts-child-card:focus-visible { outline: 2px solid var(--emas); outline-offset: 2px; }
+
+  .fts-card-note {
+    font-size: 8px; font-weight: 700; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--hijau);
+    background: rgba(201,146,42,0.1); border: 1px solid rgba(201,146,42,0.25);
+    border-radius: 12px; padding: 2px 10px;
+  }
+  .fts-card-couple-inner { display: flex; align-items: flex-start; justify-content: center; gap: 8px; flex-wrap: wrap; }
+  .fts-card-diamond { color: var(--emas); font-size: 10px; flex-shrink: 0; margin-top: 20px; }
+
+  .fts-card-person {
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    cursor: pointer; padding: 6px; border-radius: 10px;
+    transition: background 0.15s, transform 0.15s;
+  }
+  .fts-card-person:hover { background: rgba(201,146,42,0.09); transform: scale(1.06); }
+  .fts-child-card:not(.has-children) .fts-card-person { cursor: pointer; }
+
+  .fts-card-avatar-wrap {
+    width: 56px; height: 56px; border-radius: 50%;
+    border: 2px solid var(--emas); background: var(--emas3);
+    overflow: hidden; display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.15s;
+  }
+  .fts-card-avatar-wrap.deceased { border-style: dashed; border-color: var(--text3); filter: grayscale(0.5); opacity: 0.8; }
+  .fts-card-person:hover .fts-card-avatar-wrap { border-color: var(--emas2); }
+
+  .fts-card-avatar { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: var(--emas3); }
+  .fts-card-avatar.deceased { filter: grayscale(0.6); }
+  .fts-card-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .fts-card-initials { font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 700; color: var(--hijau); }
+  .fts-card-name { font-size: 11px; font-weight: 600; color: var(--text1); max-width: 110px; line-height: 1.25; text-align: center; }
+  .fts-card-fatihah { font-size: 8px; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; min-height: 1.2em; }
+
+  .fts-card-order {
+    font-size: 9px; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--hijau2);
+    background: rgba(23,61,40,0.07); border: 1px solid rgba(23,61,40,0.15);
+    border-radius: 10px; padding: 2px 9px; align-self: center;
+  }
+
+  .fts-card-arrow { color: var(--emas); opacity: 0.6; transition: opacity 0.15s, transform 0.2s; margin-top: 4px; }
+  .fts-child-card.has-children:hover .fts-card-arrow { opacity: 1; transform: translateX(4px); }
+
+  /* ── VIEW TABS ── */
+  .ft-view-tabs {
+    display: none;
+    align-items: center; gap: 4px;
+    padding: 10px 32px;
+    background: var(--cream2);
+    border-bottom: 1px solid rgba(201,146,42,0.18);
+    position: relative; z-index: 2;
+  }
+  .ft-tab {
+    display: flex; align-items: center; gap: 7px;
+    padding: 8px 20px; border-radius: 24px;
+    border: 1.5px solid transparent;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.05em;
+    color: var(--text3); background: transparent;
+    cursor: pointer; font-family: 'Lato', sans-serif;
+    transition: all 0.22s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .ft-tab:hover { color: var(--hijau2); background: rgba(201,146,42,0.07); }
+  .ft-tab--active {
+    color: var(--hijau);
+    background: #fff;
+    border-color: rgba(201,146,42,0.4);
+    box-shadow: 0 2px 10px rgba(201,146,42,0.15);
+  }
+
+  /* ── ZOOM CONTROLS ── */
+  .ft-zoom-controls {
+    position: sticky; bottom: 20px; left: 100%;
+    display: flex; flex-direction: column; gap: 4px;
+    width: fit-content; margin-right: 20px;
+    z-index: 5;
+  }
+  .ft-zoom-btn {
+    width: 34px; height: 34px;
+    border-radius: 50%; border: 1.5px solid rgba(201,146,42,0.4);
+    background: #fff; color: var(--hijau2);
+    font-size: 16px; font-weight: 700; line-height: 1;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: all 0.18s;
+  }
+  .ft-zoom-btn:hover { background: var(--emas); color: #fff; border-color: var(--emas); }
+  .ft-zoom-reset { font-size: 13px; }
+
+  @media (min-width: 769px) {
+    .ft-view-tabs   { display: flex; }
+    .ft-slide-view  { display: flex; } /* default tab = slide */
+    .ft-tree-wrap   { display: none; } /* hidden until tree tab clicked */
+    .ft-search-wrap { display: none; } /* hidden until tree tab clicked */
+  }
 
   @media (max-width: 768px) {
     html, body { min-height: 0 !important; background: #fdf7ec; }
