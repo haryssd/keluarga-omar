@@ -1062,9 +1062,7 @@ const treeJson = JSON.stringify(tree);
           else orderLabel = 'Anak Ke-' + (idx + 1);
         }
         var orderHtml = orderLabel ? '<div class="fts-card-order">' + orderLabel + '</div>' : '';
-        var noteHtml = note
-          ? '<div class="fts-card-note">' + note + '</div>'
-          : '<div class="fts-card-note" style="visibility:hidden" aria-hidden="true">·</div>';
+        var noteHtml = note ? '<div class="fts-card-note">' + note + '</div>' : '';
         var arrowHtml = hasChildren
           ? '<div class="fts-card-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>'
           : '';
@@ -1072,17 +1070,17 @@ const treeJson = JSON.stringify(tree);
 
         if (ids.length === 1) {
           return '<div class="' + cardCls + '" data-couple="' + ids.join('|') + '" role="button" tabindex="0">' +
-            noteHtml + orderHtml + slideCardPerson(ids[0]) + arrowHtml + '</div>';
+            noteHtml + slideCardPerson(ids[0]) + orderHtml + arrowHtml + '</div>';
         }
 
         return '<div class="' + cardCls + '" data-couple="' + ids.join('|') + '" role="button" tabindex="0">' +
-          noteHtml + orderHtml +
+          noteHtml +
           '<div class="fts-card-couple-inner">' +
             slideCardPerson(ids[0]) +
             '<div class="fts-card-diamond">◆</div>' +
             slideCardPerson(ids[1]) +
           '</div>' +
-          arrowHtml + '</div>';
+          orderHtml + arrowHtml + '</div>';
       }
 
       function slideCardPerson(id) {
@@ -1837,9 +1835,10 @@ const treeJson = JSON.stringify(tree);
     background: #fff;
     border: 1.5px solid rgba(201,146,42,0.18);
     border-top: 3px solid rgba(201,146,42,0.28);
-    border-radius: 14px; padding: 18px 14px 14px;
+    border-radius: 14px; padding: 20px 16px 16px;
     transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s, border-color 0.2s;
     display: flex; flex-direction: column; align-items: center;
+    justify-content: flex-start;
     text-align: center; gap: 10px; cursor: default;
     position: relative;
   }
@@ -1888,9 +1887,10 @@ const treeJson = JSON.stringify(tree);
 
   .fts-card-order {
     font-size: 9px; font-weight: 700; letter-spacing: 0.1em;
-    text-transform: uppercase; color: var(--hijau2);
-    background: rgba(23,61,40,0.07); border: 1px solid rgba(23,61,40,0.15);
-    border-radius: 10px; padding: 2px 9px; align-self: center;
+    text-transform: uppercase; color: var(--emas);
+    background: rgba(201,146,42,0.08); border: 1px solid rgba(201,146,42,0.2);
+    border-radius: 10px; padding: 3px 10px; align-self: center;
+    margin-top: auto; /* push to bottom */
   }
 
   .fts-card-arrow { color: var(--emas); opacity: 0.6; transition: opacity 0.15s, transform 0.2s; margin-top: 4px; }
